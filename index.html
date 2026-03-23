@@ -881,9 +881,10 @@ function groupWip() {
     const status   = String(getVal(r,'Status') || '').trim();
     const holdCode = String(getVal(r,'Hold Code') || '').trim();
     const qty      = Number(getVal(r,'Qty') || 0);
-    const key = `${owner}|${body}|${lead}`;
+    const ownerKey = owner.slice(0, 2);  // 前2碼合併
+    const key = `${ownerKey}|${body}|${lead}`;
     if (!map[key]) {
-      map[key] = { owner, body, lead, x30:0, x40:0, x50:0, x60:0, x70:0, hold:0 };
+      map[key] = { owner: ownerKey, body, lead, x30:0, x40:0, x50:0, x60:0, x70:0, hold:0 };
     }
     if (WIP_ST.includes(status)) map[key][status] += qty;
     if (holdCode) map[key].hold += qty;  // 獨立統計，不互斥
@@ -1022,23 +1023,24 @@ function openWipDetail(rowIdx, col) {
   const g = wipTableData[rowIdx];
   if (!g) return;
   let matched;
+  const ownerMatch = r => String(getVal(r,'Owner')||'').trim().slice(0,2) === g.owner;
   if (col === 'hold') {
     matched = wipRows.filter(r =>
-      String(getVal(r,'Owner')||'').trim() === g.owner &&
+      ownerMatch(r) &&
       String(getVal(r,'Body') ||'').trim() === g.body  &&
       String(getVal(r,'Lead') ||'').trim() === g.lead  &&
       String(getVal(r,'Hold Code')||'').trim() !== ''
     );
   } else if (col === 'total') {
     matched = wipRows.filter(r =>
-      String(getVal(r,'Owner')||'').trim() === g.owner &&
+      ownerMatch(r) &&
       String(getVal(r,'Body') ||'').trim() === g.body  &&
       String(getVal(r,'Lead') ||'').trim() === g.lead  &&
       WIP_ST.includes(String(getVal(r,'Status')||'').trim())
     );
   } else {
     matched = wipRows.filter(r =>
-      String(getVal(r,'Owner')||'').trim() === g.owner &&
+      ownerMatch(r) &&
       String(getVal(r,'Body') ||'').trim() === g.body  &&
       String(getVal(r,'Lead') ||'').trim() === g.lead  &&
       String(getVal(r,'Status')||'').trim() === col
