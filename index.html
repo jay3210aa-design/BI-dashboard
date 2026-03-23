@@ -163,6 +163,42 @@ body {
 }
 .wip-tag.active { color: var(--text); font-weight: 700; }
 
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  z-index: 1000; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card-bg); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  width: 90vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+}
+.modal-title { font-size: 14px; font-weight: 700; }
+.modal-close {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: var(--text-sub); line-height: 1; padding: 0 4px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { overflow: auto; flex: 1; }
+.modal-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.modal-table th {
+  position: sticky; top: 0; background: var(--card-bg);
+  padding: 8px 12px; border-bottom: 2px solid var(--border);
+  text-align: left; font-size: 11px; color: var(--text-sub);
+  font-weight: 700; white-space: nowrap; text-transform: uppercase;
+}
+.modal-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.modal-table tr:last-child td { border-bottom: none; }
+.modal-table tr:hover td { background: rgba(0,0,0,0.03); }
+@media (prefers-color-scheme: dark) { .modal-table tr:hover td { background: rgba(255,255,255,0.04); } }
+.modal-empty { text-align: center; color: var(--text-sub); padding: 30px; }
+.date-row { cursor: pointer; }
+.date-row:hover .date-lbl { color: var(--accent); text-decoration: underline; }
+
 /* Note */
 .card-note-wrap { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 7px; }
 .card-note {
@@ -323,6 +359,22 @@ td input {
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="detailModal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle"></span>
+      <button class="modal-close" onclick="document.getElementById('detailModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <table class="modal-table">
+        <thead><tr id="modalHead"></tr></thead>
+        <tbody id="modalBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -552,7 +604,7 @@ function render() {
 
   let ok = 0, warn = 0, bad = 0;
 
-  grid.innerHTML = rules.map(rule => {
+  grid.innerHTML = rules.map((rule, ruleIdx) => {
     const { byDate, wip } = compute(rule);
 
     // WIP tags
@@ -575,7 +627,7 @@ function render() {
           const pctCap = Math.min(100, rawPct);
           const mmdd = date.substring(5);  // MM/DD
           return `
-          <div class="date-row">
+          <div class="date-row" onclick="openDetail(${ruleIdx},'${date}')">
             <span class="date-lbl">${mmdd}</span>
             <div class="mini-bar"><div class="mini-fill ${sc}" style="width:${pctCap}%"></div></div>
             <span class="date-qty">${toK(done)}/${rule.target}K</span>
@@ -694,6 +746,52 @@ function saveEdit(i) {
   saveRules();
   renderRules();
   render();
+}
+
+// ── Detail Modal ────────────────────────────────────────
+const DETAIL_COLS = [
+  { key: 'Lot_number',    label: 'Lot Number' },
+  { key: 'Product',       label: 'Product' },
+  { key: 'Oper',          label: 'Oper' },
+  { key: 'Date',          label: 'Date' },
+  { key: 'Entity',        label: 'Entity' },
+  { key: 'Pass_qty',      label: 'Pass Qty' },
+  { key: 'BI Time(Hour)', label: 'BI Time(H)' },
+  { key: 'BIB Label',     label: 'BIB Label' },
+  { key: 'BIB Socket',    label: 'BIB Socket' },
+  { key: '車規',           label: '車規' },
+];
+
+function openDetail(ruleIdx, date) {
+  const rule = rules[ruleIdx];
+  if (!rule) return;
+  const matched = allOutputRows.filter(r =>
+    toDateStr(getVal(r,'Date','date','DATE')) === date &&
+    matchRule(rule, getVal(r,'Owner'), getVal(r,'Lead'), getVal(r,'Product'))
+  );
+  // Header
+  document.getElementById('modalTitle').textContent =
+    `${rule.owner} / ${rule.lead}${rule.part ? ' / ' + rule.part : ''} — ${date} 產出明細（${matched.length} 筆）`;
+  document.getElementById('modalHead').innerHTML =
+    DETAIL_COLS.map(c => `<th>${c.label}</th>`).join('');
+  // Body
+  if (matched.length === 0) {
+    document.getElementById('modalBody').innerHTML =
+      `<tr><td colspan="${DETAIL_COLS.length}" class="modal-empty">無符合資料</td></tr>`;
+  } else {
+    document.getElementById('modalBody').innerHTML = matched.map(r =>
+      `<tr>${DETAIL_COLS.map(c => {
+        const val = getVal(r, c.key) || '';
+        const disp = c.key === 'Date' ? toDateStr(val) : escHtml(String(val));
+        return `<td>${disp}</td>`;
+      }).join('')}</tr>`
+    ).join('');
+  }
+  document.getElementById('detailModal').classList.add('open');
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('detailModal'))
+    document.getElementById('detailModal').classList.remove('open');
 }
 
 // ── Export ──────────────────────────────────────────────
