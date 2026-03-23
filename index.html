@@ -255,6 +255,37 @@ td input {
   border-radius: 4px; background: var(--input-bg); color: var(--text); font-size: 13px;
 }
 .actions { white-space: nowrap; display: flex; gap: 5px; }
+
+/* WIP table */
+.wip-filter-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; align-items: flex-end; }
+.wip-filter-row .form-group { flex: 1 1 120px; }
+.wip-tbl-wrap { overflow-x: auto; background: var(--card-bg); border-radius: 10px; box-shadow: var(--shadow); }
+.wip-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wip-tbl th {
+  padding: 10px 12px; border-bottom: 2px solid var(--border);
+  text-align: left; font-size: 11px; color: var(--text-sub);
+  font-weight: 700; white-space: nowrap; text-transform: uppercase;
+  cursor: pointer; user-select: none;
+}
+.wip-tbl th:hover { color: var(--text); }
+.wip-tbl th.sort-asc::after  { content: ' ▲'; color: var(--accent); }
+.wip-tbl th.sort-desc::after { content: ' ▼'; color: var(--accent); }
+.wip-tbl td { padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.wip-tbl tr:last-child td { border-bottom: none; }
+.wip-tbl tr:hover td { background: rgba(0,0,0,0.02); }
+@media (prefers-color-scheme: dark) { .wip-tbl tr:hover td { background: rgba(255,255,255,0.03); } }
+.wip-tbl .num-col { text-align: right; }
+.wip-tbl td.has-qty { color: var(--text); font-weight: 600; }
+.wip-tbl td.zero { color: var(--text-sub); }
+.wip-tbl td.wip-clickable:hover { color: var(--accent); text-decoration: underline; }
+.wip-tbl tr.total-row td { border-top: 2px solid var(--border); font-weight: 700; background: var(--pill-bg); }
+.wip-summary { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.wip-sum-card {
+  background: var(--card-bg); border-radius: 8px; padding: 10px 16px;
+  box-shadow: var(--shadow); text-align: center; flex: 1 1 80px;
+}
+.wip-sum-card .n { font-size: 20px; font-weight: 800; }
+.wip-sum-card .l { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -272,6 +303,7 @@ td input {
 
 <div class="tabs">
   <button class="tab-btn active" id="tab-btn-dashboard" onclick="switchTab('dashboard',this)">📈 進度追蹤</button>
+  <button class="tab-btn" id="tab-btn-wip" onclick="switchTab('wip',this);renderWipTable()">📦 WIP 總覽</button>
   <button class="tab-btn" id="tab-btn-rules" onclick="switchTab('rules',this)">⚙️ 規則設定</button>
 </div>
 
@@ -279,29 +311,19 @@ td input {
 <div class="tab-content active" id="tab-dashboard">
   <div class="container">
 
-    <div class="upload-row">
-      <div class="upload-box" id="box-output">
-        <label>
-          <input type="file" accept=".xlsx,.xls" onchange="loadOutput(this)">
-          <div class="upload-icon">📥</div>
-          <div>
-            <div class="upload-title">Output 檔</div>
-            <div class="upload-hint">BinData_Yield.xlsx</div>
+    <div class="upload-box" id="box-combined" style="margin-bottom:18px">
+      <label>
+        <input type="file" accept=".xlsx,.xls" multiple onchange="loadFiles(this)">
+        <div class="upload-icon">📂</div>
+        <div style="flex:1">
+          <div class="upload-title">匯入資料</div>
+          <div class="upload-hint">同時選取 Output + WIP 檔案，自動識別（可各別重新上傳）</div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:4px">
             <div class="upload-status" id="status-output"></div>
-          </div>
-        </label>
-      </div>
-      <div class="upload-box" id="box-wip">
-        <label>
-          <input type="file" accept=".xlsx,.xls" onchange="loadWip(this)">
-          <div class="upload-icon">📋</div>
-          <div>
-            <div class="upload-title">WIP 檔</div>
-            <div class="upload-hint">WipCustomer_Wip.xls / .xlsx</div>
             <div class="upload-status" id="status-wip"></div>
           </div>
-        </label>
-      </div>
+        </div>
+      </label>
     </div>
 
     <div class="summary-grid">
@@ -315,6 +337,61 @@ td input {
       <button class="btn btn-primary" onclick="exportExcel()">⬇ 匯出 Excel</button>
     </div>
     <div class="cards-grid" id="cards-grid"></div>
+  </div>
+</div>
+
+<!-- ── WIP 總覽 ── -->
+<div class="tab-content" id="tab-wip">
+  <div class="container">
+
+    <div class="wip-summary">
+      <div class="wip-sum-card"><div class="n" id="wg-rows">–</div><div class="l">群組數</div></div>
+      <div class="wip-sum-card"><div class="n c-blue"  id="wg-x30">–</div><div class="l">x30（K）</div></div>
+      <div class="wip-sum-card"><div class="n c-blue"  id="wg-x40">–</div><div class="l">x40（K）</div></div>
+      <div class="wip-sum-card"><div class="n c-blue"  id="wg-x50">–</div><div class="l">x50（K）</div></div>
+      <div class="wip-sum-card"><div class="n c-blue"  id="wg-x60">–</div><div class="l">x60（K）</div></div>
+      <div class="wip-sum-card"><div class="n c-blue"  id="wg-x70">–</div><div class="l">x70（K）</div></div>
+      <div class="wip-sum-card"><div class="n c-red"    id="wg-hold">–</div><div class="l">Hold（K）</div></div>
+      <div class="wip-sum-card"><div class="n"         id="wg-tot">–</div><div class="l">合計（K）</div></div>
+    </div>
+
+    <div class="wip-filter-row">
+      <div class="form-group">
+        <label>Owner</label>
+        <input type="text" id="wf-owner" placeholder="篩選 Owner" oninput="renderWipTable()">
+      </div>
+      <div class="form-group">
+        <label>Body</label>
+        <input type="text" id="wf-body" placeholder="篩選 Body" oninput="renderWipTable()">
+      </div>
+      <div class="form-group">
+        <label>Lead</label>
+        <input type="text" id="wf-lead" placeholder="篩選 Lead" oninput="renderWipTable()">
+      </div>
+      <button class="btn btn-edit" onclick="clearWipFilter()">清除篩選</button>
+      <button class="btn btn-primary" onclick="exportWipExcel()">⬇ 匯出 Excel</button>
+    </div>
+
+    <div class="wip-tbl-wrap">
+      <table class="wip-tbl">
+        <thead>
+          <tr>
+            <th onclick="wipSort('owner')">Owner</th>
+            <th onclick="wipSort('body')">Body</th>
+            <th onclick="wipSort('lead')">Lead</th>
+            <th onclick="wipSort('x30')" class="num-col">x30</th>
+            <th onclick="wipSort('x40')" class="num-col">x40</th>
+            <th onclick="wipSort('x50')" class="num-col">x50</th>
+            <th onclick="wipSort('x60')" class="num-col">x60</th>
+            <th onclick="wipSort('x70')" class="num-col">x70</th>
+            <th onclick="wipSort('hold')" class="num-col">Hold</th>
+            <th onclick="wipSort('total')" class="num-col">合計</th>
+          </tr>
+        </thead>
+        <tbody id="wip-tbody"></tbody>
+      </table>
+    </div>
+
   </div>
 </div>
 
@@ -433,7 +510,7 @@ function updateOutputStatus() {
   const avail = [...new Set(allOutputRows.map(r => toDateStr(getVal(r,'Date','date','DATE'))))].sort().join('、');
   const inRange = getDatesInRange();
   document.getElementById('status-output').innerHTML =
-    `✓ 共 ${allOutputRows.length.toLocaleString()} 列，區間內 ${inRange.length} 天<br>` +
+    `✓ Output ${allOutputRows.length.toLocaleString()} 列，區間內 ${inRange.length} 天<br>` +
     `<span style="color:var(--text-sub);font-size:10px">檔案含日期：${avail || '–'}</span>`;
 }
 
@@ -518,6 +595,50 @@ function labelOf(sc) {
 }
 
 // ── File loading ────────────────────────────────────────
+function loadFiles(input) {
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { defval:'' });
+        if (!data.length) return;
+        const cols = Object.keys(data[0]).map(k => k.toLowerCase());
+        if (cols.some(k => k.includes('pass_qty') || k === 'pass_qty')) {
+          processOutput(data);
+        } else if (cols.some(k => k.includes('wsm lot') || k === 'wsm lot' || k.includes('wsmlo'))) {
+          processWip(data);
+        } else {
+          // fallback: guess by Status column presence
+          if (cols.includes('status')) processWip(data);
+          else processOutput(data);
+        }
+      } catch(err) {
+        document.getElementById('status-output').textContent = '⚠ 解析失敗：' + err.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function processOutput(data) {
+  allOutputRows = data;
+  outputRows = allOutputRows.filter(r => toDateStr(getVal(r,'Date','date','DATE')) === selectedDate);
+  hasOutput = true;
+  updateOutputStatus();
+  document.getElementById('box-combined').classList.add('loaded');
+  render();
+}
+
+function processWip(data) {
+  wipRows = data;
+  hasWip = true;
+  document.getElementById('status-wip').textContent = `✓ WIP ${wipRows.length.toLocaleString()} 列`;
+  document.getElementById('box-combined').classList.add('loaded');
+  render();
+}
+
 function loadOutput(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -746,6 +867,194 @@ function saveEdit(i) {
   saveRules();
   renderRules();
   render();
+}
+
+// ── WIP 總覽 ────────────────────────────────────────────
+let wipSortCol = 'total', wipSortDir = -1;
+
+function groupWip() {
+  const map = {};
+  wipRows.forEach(r => {
+    const owner    = String(getVal(r,'Owner') || '').trim();
+    const body     = String(getVal(r,'Body')  || '').trim();
+    const lead     = String(getVal(r,'Lead')  || '').trim();
+    const status   = String(getVal(r,'Status') || '').trim();
+    const holdCode = String(getVal(r,'Hold Code') || '').trim();
+    const qty      = Number(getVal(r,'Qty') || 0);
+    const key = `${owner}|${body}|${lead}`;
+    if (!map[key]) {
+      map[key] = { owner, body, lead, x30:0, x40:0, x50:0, x60:0, x70:0, hold:0 };
+    }
+    if (WIP_ST.includes(status)) map[key][status] += qty;
+    if (holdCode) map[key].hold += qty;  // 獨立統計，不互斥
+  });
+  return Object.values(map).map(g => ({
+    ...g, total: g.x30+g.x40+g.x50+g.x60+g.x70  // 合計不含 Hold
+  }));
+}
+
+function wipSort(col) {
+  if (wipSortCol === col) wipSortDir *= -1;
+  else { wipSortCol = col; wipSortDir = col==='owner'||col==='body'||col==='lead' ? 1 : -1; }
+  renderWipTable();
+}
+
+function clearWipFilter() {
+  ['wf-owner','wf-body','wf-lead'].forEach(id => document.getElementById(id).value = '');
+  renderWipTable();
+}
+
+function renderWipTable() {
+  const fOwner = document.getElementById('wf-owner').value.trim().toLowerCase();
+  const fBody  = document.getElementById('wf-body').value.trim().toLowerCase();
+  const fLead  = document.getElementById('wf-lead').value.trim().toLowerCase();
+
+  if (!hasWip) {
+    document.getElementById('wip-tbody').innerHTML =
+      `<tr><td colspan="10" class="modal-empty">請先上傳 WIP 檔</td></tr>`;
+    return;
+  }
+
+  let data = groupWip().filter(g =>
+    (!fOwner || g.owner.toLowerCase().includes(fOwner)) &&
+    (!fBody  || g.body.toLowerCase().includes(fBody))  &&
+    (!fLead  || g.lead.toLowerCase().includes(fLead))
+  );
+
+  // Sort
+  data.sort((a, b) => {
+    const av = a[wipSortCol], bv = b[wipSortCol];
+    if (typeof av === 'string') return av.localeCompare(bv) * wipSortDir;
+    return (av - bv) * wipSortDir;
+  });
+
+  // Update sort indicators
+  document.querySelectorAll('.wip-tbl th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+  });
+  const colMap = { owner:0,body:1,lead:2,x30:3,x40:4,x50:5,x60:6,x70:7,hold:8,total:9 };
+  const thEl = document.querySelectorAll('.wip-tbl th')[colMap[wipSortCol]];
+  if (thEl) thEl.classList.add(wipSortDir===1 ? 'sort-asc' : 'sort-desc');
+
+  // Totals
+  const tot = { x30:0,x40:0,x50:0,x60:0,x70:0,hold:0,total:0 };
+  data.forEach(g => { WIP_ST.forEach(s=>tot[s]+=g[s]); tot.hold+=g.hold; tot.total+=g.total; });
+
+  // Summary cards
+  document.getElementById('wg-rows').textContent = data.length;
+  const kInt = v => Math.round(v/1000).toLocaleString();
+  WIP_ST.forEach(s => document.getElementById('wg-'+s).textContent = kInt(tot[s]));
+  document.getElementById('wg-hold').textContent = kInt(tot.hold);
+  document.getElementById('wg-tot').textContent  = kInt(tot.total);
+
+  wipTableData = data;
+
+  // Rows
+  const kNum = v => Math.round(v/1000).toLocaleString();
+  const numCell = (v, i, col) => {
+    const clickable = v > 0;
+    return `<td class="num-col ${v>0?'has-qty':'zero'}${clickable?' wip-clickable':''}"
+      ${clickable?`onclick="openWipDetail(${i},'${col}')"`:''}
+      style="${clickable?'cursor:pointer':''}">${kNum(v)}</td>`;
+  };
+  const tbody = data.map((g, i) => `<tr>
+    <td>${escHtml(g.owner)}</td>
+    <td>${escHtml(g.body)}</td>
+    <td>${escHtml(g.lead)}</td>
+    ${['x30','x40','x50','x60','x70'].map(s=>numCell(g[s],i,s)).join('')}
+    ${numCell(g.hold,i,'hold')}
+    ${numCell(g.total,i,'total')}
+  </tr>`).join('');
+
+  const totalRow = `<tr class="total-row">
+    <td colspan="3">合計（${data.length} 群組）</td>
+    ${['x30','x40','x50','x60','x70'].map(s=>`<td class="num-col">${kNum(tot[s])}</td>`).join('')}
+    <td class="num-col">${kNum(tot.hold)}</td>
+    <td class="num-col">${kNum(tot.total)}</td>
+  </tr>`;
+
+  document.getElementById('wip-tbody').innerHTML =
+    (data.length ? tbody : `<tr><td colspan="10" class="modal-empty">無符合資料</td></tr>`) + totalRow;
+}
+
+// ── WIP Export ──────────────────────────────────────────
+function exportWipExcel() {
+  if (!wipTableData.length) { alert('尚無資料可匯出'); return; }
+  const headers = ['Owner','Body','Lead','x30','x40','x50','x60','x70','Hold','合計'];
+  const kNum = v => Math.round(v / 1000);
+  const rows = [headers];
+  wipTableData.forEach(g => {
+    rows.push([
+      g.owner, g.body, g.lead,
+      kNum(g.x30), kNum(g.x40), kNum(g.x50), kNum(g.x60), kNum(g.x70),
+      kNum(g.hold), kNum(g.total)
+    ]);
+  });
+  // Total row
+  const tot = { x30:0,x40:0,x50:0,x60:0,x70:0,hold:0,total:0 };
+  wipTableData.forEach(g => { ['x30','x40','x50','x60','x70','hold','total'].forEach(k=>tot[k]+=g[k]); });
+  rows.push(['合計','','', kNum(tot.x30),kNum(tot.x40),kNum(tot.x50),kNum(tot.x60),kNum(tot.x70),kNum(tot.hold),kNum(tot.total)]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [14,12,12,10,10,10,10,10,10,10].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'WIP總覽');
+  const now = new Date();
+  const tag = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  XLSX.writeFile(wb, `WIP總覽_${tag}.xlsx`);
+}
+
+// ── WIP Detail Modal ────────────────────────────────────
+const WIP_DETAIL_COLS = [
+  { key:'Cust Lot',   label:'Cust Lot'   },
+  { key:'WSM Lot',    label:'WSM Lot'    },
+  { key:'Device',     label:'Device'     },
+  { key:'Oper',       label:'Oper'       },
+  { key:'Status',     label:'Status'     },
+  { key:'Hold Code',  label:'Hold Code'  },
+  { key:'Qty',        label:'Qty'        },
+  { key:'Entity',     label:'Entity'     },
+  { key:'MVIN Time',  label:'MVIN Time'  },
+];
+let wipTableData = [];
+
+function openWipDetail(rowIdx, col) {
+  const g = wipTableData[rowIdx];
+  if (!g) return;
+  let matched;
+  if (col === 'hold') {
+    matched = wipRows.filter(r =>
+      String(getVal(r,'Owner')||'').trim() === g.owner &&
+      String(getVal(r,'Body') ||'').trim() === g.body  &&
+      String(getVal(r,'Lead') ||'').trim() === g.lead  &&
+      String(getVal(r,'Hold Code')||'').trim() !== ''
+    );
+  } else if (col === 'total') {
+    matched = wipRows.filter(r =>
+      String(getVal(r,'Owner')||'').trim() === g.owner &&
+      String(getVal(r,'Body') ||'').trim() === g.body  &&
+      String(getVal(r,'Lead') ||'').trim() === g.lead  &&
+      WIP_ST.includes(String(getVal(r,'Status')||'').trim())
+    );
+  } else {
+    matched = wipRows.filter(r =>
+      String(getVal(r,'Owner')||'').trim() === g.owner &&
+      String(getVal(r,'Body') ||'').trim() === g.body  &&
+      String(getVal(r,'Lead') ||'').trim() === g.lead  &&
+      String(getVal(r,'Status')||'').trim() === col
+    );
+  }
+  const colLabel = col==='hold'?'Hold':col==='total'?'合計':col;
+  document.getElementById('modalTitle').textContent =
+    `${g.owner} / ${g.body} / ${g.lead} — ${colLabel} 明細（${matched.length} 筆）`;
+  document.getElementById('modalHead').innerHTML =
+    WIP_DETAIL_COLS.map(c=>`<th>${c.label}</th>`).join('');
+  document.getElementById('modalBody').innerHTML = matched.length === 0
+    ? `<tr><td colspan="${WIP_DETAIL_COLS.length}" class="modal-empty">無資料</td></tr>`
+    : matched.map(r =>
+        `<tr>${WIP_DETAIL_COLS.map(c=>`<td>${escHtml(String(getVal(r,c.key)||''))}</td>`).join('')}</tr>`
+      ).join('');
+  document.getElementById('detailModal').classList.add('open');
 }
 
 // ── Detail Modal ────────────────────────────────────────
