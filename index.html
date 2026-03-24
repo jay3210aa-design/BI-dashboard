@@ -451,6 +451,23 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
       <div class="wip-sum-card"><div class="n"         id="wg-tot">–</div><div class="l">合計（K）</div></div>
     </div>
 
+    <!-- Lot 搜尋列 -->
+    <div class="wip-filter-row" style="margin-bottom:8px">
+      <div class="form-group" style="flex:1 1 200px">
+        <label>ChipMos Lot 搜尋</label>
+        <input type="text" id="search-chipmos" placeholder="輸入 ChipMos Lot"
+          onkeydown="if(event.key==='Enter')searchByLot('chipmos')">
+      </div>
+      <button class="btn btn-primary" onclick="searchByLot('chipmos')">🔍 查詢</button>
+      <div class="form-group" style="flex:1 1 200px">
+        <label>Cust Lot 搜尋</label>
+        <input type="text" id="search-custlot" placeholder="輸入 Cust Lot"
+          onkeydown="if(event.key==='Enter')searchByLot('custlot')">
+      </div>
+      <button class="btn btn-primary" onclick="searchByLot('custlot')">🔍 查詢</button>
+    </div>
+
+    <!-- 篩選列 -->
     <div class="wip-filter-row">
       <div class="form-group">
         <label>Owner</label>
@@ -1187,9 +1204,10 @@ function saveEdit(i) {
 // ── WIP 總覽 ────────────────────────────────────────────
 let wipSortCol = 'total', wipSortDir = -1;
 
-function groupWip() {
+function groupWip(rows) {
+  rows = rows || wipRows;
   const map = {};
-  wipRows.forEach(r => {
+  rows.forEach(r => {
     const owner    = String(getVal(r,'Owner') || '').trim();
     const body     = String(getVal(r,'Body','Body Size') || '').trim();
     const lead     = String(getVal(r,'Lead')  || '').trim();
@@ -1408,6 +1426,29 @@ function openWipDetail(rowIdx, col) {
     ? `<tr><td colspan="${cols.length}" class="modal-empty">無資料</td></tr>`
     : matched.map(r =>
         `<tr>${cols.map(c=>`<td>${escHtml(String(c.compute ? c.compute(r) : (getVal(r,c.key)||'')))}</td>`).join('')}</tr>`
+      ).join('');
+  document.getElementById('detailModal').classList.add('open');
+}
+
+// ── Lot 搜尋 ────────────────────────────────────────────
+function searchByLot(type) {
+  if (!hasWip) { alert('請先上傳 WIP 檔'); return; }
+  const val = document.getElementById(type === 'chipmos' ? 'search-chipmos' : 'search-custlot').value.trim();
+  if (!val) { alert('請輸入搜尋值'); return; }
+  const key  = type === 'chipmos' ? 'ChipMos Lot' : 'Customer Lot';
+  const label = type === 'chipmos' ? 'ChipMos Lot' : 'Cust Lot';
+  const matched = wipRows.filter(r => {
+    const v = String(getVal(r, key) || '');
+    return type === 'chipmos' ? v === val : v.includes(val);
+  });
+  const cols = WIP_DETAIL_COLS.filter(c => c.key !== 'Hold Code');
+  document.getElementById('modalTitle').textContent =
+    `${label}：${val} — 搜尋結果（${matched.length} 筆）`;
+  document.getElementById('modalHead').innerHTML = cols.map(c => `<th>${c.label}</th>`).join('');
+  document.getElementById('modalBody').innerHTML = matched.length === 0
+    ? `<tr><td colspan="${cols.length}" class="modal-empty">查無資料</td></tr>`
+    : matched.map(r =>
+        `<tr>${cols.map(c => `<td>${escHtml(String(c.compute ? c.compute(r) : (getVal(r, c.key) || '')))}</td>`).join('')}</tr>`
       ).join('');
   document.getElementById('detailModal').classList.add('open');
 }
