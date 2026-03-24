@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>生產進度 Dashboard</title>
+<title>BI WIP Output Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -286,12 +286,16 @@ td input {
 }
 .wip-sum-card .n { font-size: 20px; font-weight: 800; }
 .wip-sum-card .l { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+
+/* Card drag */
+.rule-card { cursor: grab; }
+.rule-card.drag-over { outline: 2px dashed var(--accent); }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>📊 生產進度 Dashboard</h1>
+  <h1>📊 BI WIP Output Dashboard</h1>
   <div class="date-picker-wrap">
     <span>Output 日期</span>
     <input type="date" id="dateStart" onchange="changeRange()">
@@ -515,9 +519,9 @@ function updateOutputStatus() {
 }
 
 // ── Persist ─────────────────────────────────────────────
-function saveRules() { localStorage.setItem('prod_rules_v2', JSON.stringify(rules)); }
+function saveRules() { localStorage.setItem('bi_wip_rules_v1', JSON.stringify(rules)); }
 function loadRulesLS() {
-  try { rules = JSON.parse(localStorage.getItem('prod_rules_v2')) || []; } catch { rules = []; }
+  try { rules = JSON.parse(localStorage.getItem('bi_wip_rules_v1')) || []; } catch { rules = []; }
 }
 
 // ── Notes ────────────────────────────────────────────────
@@ -525,10 +529,10 @@ let notes = {};
 function noteKey(rule) { return `${rule.owner}|${rule.lead}|${rule.part}`; }
 function saveNote(key, val) {
   notes[key] = val;
-  localStorage.setItem('prod_notes_v1', JSON.stringify(notes));
+  localStorage.setItem('bi_wip_notes_v1', JSON.stringify(notes));
 }
 function loadNotes() {
-  try { notes = JSON.parse(localStorage.getItem('prod_notes_v1')) || {}; } catch { notes = {}; }
+  try { notes = JSON.parse(localStorage.getItem('bi_wip_notes_v1')) || {}; } catch { notes = {}; }
 }
 
 // ── Tab ─────────────────────────────────────────────────
@@ -572,6 +576,29 @@ function getVal(row, ...names) {
   return '';
 }
 
+// Oper → x30~x70
+const OPER_EXACT = {
+  '430':'x30','9430':'x30',
+  '440':'x40','9440':'x40',
+  '450':'x50','9450':'x50',
+  '460':'x60','9460':'x60',
+  '470':'x70','9470':'x70',
+};
+function operToStatus(oper) {
+  const s = String(oper || '').trim();
+  if (!s) return null;
+  // 第一步：完全符合
+  if (OPER_EXACT[s]) return OPER_EXACT[s];
+  // 第二步：最後1碼
+  const last = s.slice(-1);
+  if (last === '1' || last === '6') return 'x30';
+  if (last === '2' || last === '7') return 'x40';
+  if (last === '3' || last === '8') return 'x50';
+  if (last === '4' || last === '9') return 'x60';
+  if (last === '5' || last === '0') return 'x70';
+  return null;
+}
+
 function globMatch(pattern, str) {
   if (!pattern) return true;
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
@@ -579,8 +606,10 @@ function globMatch(pattern, str) {
 }
 
 function matchRule(rule, owner, lead, product) {
-  if ((rule.owner || '').toLowerCase() !== (owner || '').toLowerCase()) return false;
-  if ((rule.lead  || '').toLowerCase() !== (lead  || '').toLowerCase()) return false;
+  const r2 = (rule.owner || '').slice(0,2).toLowerCase();
+  const d2 = (owner     || '').slice(0,2).toLowerCase();
+  if (r2 !== d2) return false;
+  if ((rule.lead || '').toLowerCase() !== (lead || '').toLowerCase()) return false;
   if (rule.part && !globMatch(rule.part, product)) return false;
   return true;
 }
@@ -607,11 +636,11 @@ function loadFiles(input) {
         const cols = Object.keys(data[0]).map(k => k.toLowerCase());
         if (cols.some(k => k.includes('pass_qty') || k === 'pass_qty')) {
           processOutput(data);
-        } else if (cols.some(k => k.includes('wsm lot') || k === 'wsm lot' || k.includes('wsmlo'))) {
+        } else if (cols.some(k => k.includes('chipmos') || k.includes('chipmoslot'))) {
           processWip(data);
         } else {
-          // fallback: guess by Status column presence
-          if (cols.includes('status')) processWip(data);
+          // fallback: guess by Oper column presence
+          if (cols.includes('oper')) processWip(data);
           else processOutput(data);
         }
       } catch(err) {
@@ -700,8 +729,8 @@ function compute(rule) {
   wip['其他'] = 0;
   for (const r of wipRows) {
     if (matchRule(rule, getVal(r,'Owner'), getVal(r,'Lead'), getVal(r,'Device'))) {
-      const st = String(getVal(r,'Status') || '').trim();
-      if (WIP_ST.includes(st)) wip[st] += Number(getVal(r,'Qty') || 0);
+      const st = operToStatus(getVal(r,'Oper'));
+      if (st && WIP_ST.includes(st)) wip[st] += Number(getVal(r,'Qty') || 0);
       else wip['其他'] += Number(getVal(r,'Qty') || 0);
     }
   }
@@ -766,7 +795,7 @@ function render() {
     }
 
     return `
-    <div class="rule-card">
+    <div class="rule-card" draggable="true" data-idx="${ruleIdx}">
       <div class="card-stripe ${stripeSc}"></div>
       <div class="card-body">
         <div class="card-top" style="margin-bottom:6px">
@@ -790,10 +819,49 @@ function render() {
   document.getElementById('sum-ok').textContent   = hasOutput ? ok   : '–';
   document.getElementById('sum-warn').textContent = hasOutput ? warn : '–';
   document.getElementById('sum-bad').textContent  = hasOutput ? bad  : '–';
+  attachCardDrag();
 }
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Card drag-and-drop ───────────────────────────────────
+let dragSrcIdx = null;
+
+function attachCardDrag() {
+  document.querySelectorAll('.rule-card').forEach(card => {
+    const idx = parseInt(card.dataset.idx);
+    card.addEventListener('dragstart', e => {
+      dragSrcIdx = idx;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => { card.style.opacity = '0.4'; }, 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.style.opacity = '';
+      document.querySelectorAll('.rule-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.rule-card').forEach(c => c.classList.remove('drag-over'));
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      document.querySelectorAll('.rule-card').forEach(c => c.classList.remove('drag-over'));
+      if (dragSrcIdx === null || dragSrcIdx === idx) return;
+      const moved = rules.splice(dragSrcIdx, 1)[0];
+      rules.splice(idx, 0, moved);
+      dragSrcIdx = null;
+      saveRules();
+      renderRules();
+      render();
+    });
+  });
 }
 
 // ── Rules CRUD ──────────────────────────────────────────
@@ -876,9 +944,9 @@ function groupWip() {
   const map = {};
   wipRows.forEach(r => {
     const owner    = String(getVal(r,'Owner') || '').trim();
-    const body     = String(getVal(r,'Body')  || '').trim();
+    const body     = String(getVal(r,'Body','Body Size') || '').trim();
     const lead     = String(getVal(r,'Lead')  || '').trim();
-    const status   = String(getVal(r,'Status') || '').trim();
+    const oper     = String(getVal(r,'Oper')  || '').trim();
     const holdCode = String(getVal(r,'Hold Code') || '').trim();
     const qty      = Number(getVal(r,'Qty') || 0);
     const ownerKey = owner.slice(0, 2);  // 前2碼合併
@@ -886,7 +954,8 @@ function groupWip() {
     if (!map[key]) {
       map[key] = { owner: ownerKey, body, lead, x30:0, x40:0, x50:0, x60:0, x70:0, hold:0 };
     }
-    if (WIP_ST.includes(status)) map[key][status] += qty;
+    const st = operToStatus(oper);
+    if (st && WIP_ST.includes(st)) map[key][st] += qty;
     if (holdCode) map[key].hold += qty;  // 獨立統計，不互斥
   });
   return Object.values(map).map(g => ({
@@ -981,41 +1050,79 @@ function renderWipTable() {
 // ── WIP Export ──────────────────────────────────────────
 function exportWipExcel() {
   if (!wipTableData.length) { alert('尚無資料可匯出'); return; }
-  const headers = ['Owner','Body','Lead','x30','x40','x50','x60','x70','Hold','合計'];
   const kNum = v => Math.round(v / 1000);
-  const rows = [headers];
+
+  // ── Sheet1：彙總表 ──
+  const headers1 = ['Owner','Body','Lead','x30','x40','x50','x60','x70','Hold','合計'];
+  const rows1 = [headers1];
   wipTableData.forEach(g => {
-    rows.push([
+    rows1.push([
       g.owner, g.body, g.lead,
       kNum(g.x30), kNum(g.x40), kNum(g.x50), kNum(g.x60), kNum(g.x70),
       kNum(g.hold), kNum(g.total)
     ]);
   });
-  // Total row
-  const tot = { x30:0,x40:0,x50:0,x60:0,x70:0,hold:0,total:0 };
+  const tot = { x30:0, x40:0, x50:0, x60:0, x70:0, hold:0, total:0 };
   wipTableData.forEach(g => { ['x30','x40','x50','x60','x70','hold','total'].forEach(k=>tot[k]+=g[k]); });
-  rows.push(['合計','','', kNum(tot.x30),kNum(tot.x40),kNum(tot.x50),kNum(tot.x60),kNum(tot.x70),kNum(tot.hold),kNum(tot.total)]);
+  rows1.push(['合計','','', kNum(tot.x30),kNum(tot.x40),kNum(tot.x50),kNum(tot.x60),kNum(tot.x70),kNum(tot.hold),kNum(tot.total)]);
+  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
+  ws1['!cols'] = [14,12,12,10,10,10,10,10,10,10].map(w=>({wch:w}));
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [14,12,12,10,10,10,10,10,10,10].map(w=>({wch:w}));
+  // ── Sheet2：逐筆明細（含 BI條件） ──
+  const headers2 = WIP_DETAIL_COLS.map(c => c.label);
+  const rows2 = [headers2];
+  // 取得當前篩選條件
+  const fOwner = document.getElementById('wf-owner').value.trim().toLowerCase();
+  const fBody  = document.getElementById('wf-body').value.trim().toLowerCase();
+  const fLead  = document.getElementById('wf-lead').value.trim().toLowerCase();
+  wipRows.forEach(r => {
+    const owner2 = String(getVal(r,'Owner')||'').trim().slice(0,2).toLowerCase();
+    const body   = String(getVal(r,'Body','Body Size')||'').trim().toLowerCase();
+    const lead   = String(getVal(r,'Lead')||'').trim().toLowerCase();
+    if (fOwner && !owner2.includes(fOwner)) return;
+    if (fBody  && !body.includes(fBody))   return;
+    if (fLead  && !lead.includes(fLead))   return;
+    rows2.push(WIP_DETAIL_COLS.map(c =>
+      c.compute ? c.compute(r) : String(getVal(r, c.key) || '')
+    ));
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols'] = [16,16,14,10,14,14,10,14,16].map(w=>({wch:w}));
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'WIP總覽');
+  XLSX.utils.book_append_sheet(wb, ws1, 'WIP彙總');
+  XLSX.utils.book_append_sheet(wb, ws2, '逐筆明細');
   const now = new Date();
   const tag = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   XLSX.writeFile(wb, `WIP總覽_${tag}.xlsx`);
 }
 
+// ── BI條件計算 ───────────────────────────────────────────
+function getBiCondition(tfrom, flow) {
+  if (!tfrom || !flow) return '';
+  const tfromBase = String(tfrom).split('(')[0].trim();  // "(" 左邊
+  if (!tfromBase) return '';
+  const flowStr = String(flow);
+  const idx = flowStr.indexOf(tfromBase);
+  if (idx === -1) return '';
+  // tfromBase 右邊第一個 () 內的值
+  const after = flowStr.slice(idx + tfromBase.length);
+  const m = after.match(/\(([^)]*)\)/);
+  return m ? m[1] : '';
+}
+
 // ── WIP Detail Modal ────────────────────────────────────
 const WIP_DETAIL_COLS = [
-  { key:'Cust Lot',   label:'Cust Lot'   },
-  { key:'WSM Lot',    label:'WSM Lot'    },
-  { key:'Device',     label:'Device'     },
-  { key:'Oper',       label:'Oper'       },
-  { key:'Status',     label:'Status'     },
-  { key:'Hold Code',  label:'Hold Code'  },
-  { key:'Qty',        label:'Qty'        },
-  { key:'Entity',     label:'Entity'     },
-  { key:'MVIN Time',  label:'MVIN Time'  },
+  { key:'ChipMos Lot',        label:'ChipMos Lot' },
+  { key:'Customer Lot',       label:'Cust Lot'    },
+  { key:'Device',             label:'Device'      },
+  { key:'Oper',               label:'Oper'        },
+  { key:'Hold Code',          label:'Hold Code'   },
+  { key:'Qty',                label:'Qty'         },
+  { key:'Entity',             label:'Entity'      },
+  { key:'MVIN Time',          label:'MVIN Time'   },
+  { key:'BI條件',             label:'BI條件',
+    compute: r => getBiCondition(getVal(r,'TFROM'), getVal(r,'Flow(Temperature)','Flow(Temperature )','Flow')) },
 ];
 let wipTableData = [];
 
@@ -1024,37 +1131,36 @@ function openWipDetail(rowIdx, col) {
   if (!g) return;
   let matched;
   const ownerMatch = r => String(getVal(r,'Owner')||'').trim().slice(0,2) === g.owner;
+  const bodyMatch  = r => String(getVal(r,'Body','Body Size')||'').trim() === g.body;
+  const leadMatch  = r => String(getVal(r,'Lead')||'').trim() === g.lead;
   if (col === 'hold') {
     matched = wipRows.filter(r =>
-      ownerMatch(r) &&
-      String(getVal(r,'Body') ||'').trim() === g.body  &&
-      String(getVal(r,'Lead') ||'').trim() === g.lead  &&
+      ownerMatch(r) && bodyMatch(r) && leadMatch(r) &&
       String(getVal(r,'Hold Code')||'').trim() !== ''
     );
   } else if (col === 'total') {
     matched = wipRows.filter(r =>
-      ownerMatch(r) &&
-      String(getVal(r,'Body') ||'').trim() === g.body  &&
-      String(getVal(r,'Lead') ||'').trim() === g.lead  &&
-      WIP_ST.includes(String(getVal(r,'Status')||'').trim())
+      ownerMatch(r) && bodyMatch(r) && leadMatch(r) &&
+      WIP_ST.includes(operToStatus(getVal(r,'Oper')))
     );
   } else {
     matched = wipRows.filter(r =>
-      ownerMatch(r) &&
-      String(getVal(r,'Body') ||'').trim() === g.body  &&
-      String(getVal(r,'Lead') ||'').trim() === g.lead  &&
-      String(getVal(r,'Status')||'').trim() === col
+      ownerMatch(r) && bodyMatch(r) && leadMatch(r) &&
+      operToStatus(getVal(r,'Oper')) === col
     );
   }
   const colLabel = col==='hold'?'Hold':col==='total'?'合計':col;
+  const cols = WIP_ST.includes(col)
+    ? WIP_DETAIL_COLS.filter(c => c.key !== 'Hold Code')
+    : WIP_DETAIL_COLS;
   document.getElementById('modalTitle').textContent =
     `${g.owner} / ${g.body} / ${g.lead} — ${colLabel} 明細（${matched.length} 筆）`;
   document.getElementById('modalHead').innerHTML =
-    WIP_DETAIL_COLS.map(c=>`<th>${c.label}</th>`).join('');
+    cols.map(c=>`<th>${c.label}</th>`).join('');
   document.getElementById('modalBody').innerHTML = matched.length === 0
-    ? `<tr><td colspan="${WIP_DETAIL_COLS.length}" class="modal-empty">無資料</td></tr>`
+    ? `<tr><td colspan="${cols.length}" class="modal-empty">無資料</td></tr>`
     : matched.map(r =>
-        `<tr>${WIP_DETAIL_COLS.map(c=>`<td>${escHtml(String(getVal(r,c.key)||''))}</td>`).join('')}</tr>`
+        `<tr>${cols.map(c=>`<td>${escHtml(String(c.compute ? c.compute(r) : (getVal(r,c.key)||'')))}</td>`).join('')}</tr>`
       ).join('');
   document.getElementById('detailModal').classList.add('open');
 }
