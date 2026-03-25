@@ -1235,7 +1235,7 @@ function wipSort(col) {
 }
 
 function clearWipFilter() {
-  ['wf-owner','wf-body','wf-lead'].forEach(id => document.getElementById(id).value = '');
+  ['wf-owner','wf-body','wf-lead','search-chipmos','search-custlot'].forEach(id => document.getElementById(id).value = '');
   renderWipTable();
 }
 
@@ -1378,6 +1378,7 @@ function getBiCondition(tfrom, flow) {
 
 // ── WIP Detail Modal ────────────────────────────────────
 const WIP_DETAIL_COLS = [
+  { key:'Owner',              label:'Owner'       },
   { key:'ChipMos Lot',        label:'ChipMos Lot' },
   { key:'Customer Lot',       label:'Cust Lot'    },
   { key:'Device',             label:'Device'      },
@@ -1415,9 +1416,7 @@ function openWipDetail(rowIdx, col) {
     );
   }
   const colLabel = col==='hold'?'Hold':col==='total'?'合計':col;
-  const cols = WIP_ST.includes(col)
-    ? WIP_DETAIL_COLS.filter(c => c.key !== 'Hold Code')
-    : WIP_DETAIL_COLS;
+  const cols = WIP_DETAIL_COLS;
   document.getElementById('modalTitle').textContent =
     `${g.owner} / ${g.body} / ${g.lead} — ${colLabel} 明細（${matched.length} 筆）`;
   document.getElementById('modalHead').innerHTML =
@@ -1441,7 +1440,7 @@ function searchByLot(type) {
     const v = String(getVal(r, key) || '');
     return type === 'chipmos' ? v === val : v.includes(val);
   });
-  const cols = WIP_DETAIL_COLS.filter(c => c.key !== 'Hold Code');
+  const cols = WIP_DETAIL_COLS;
   document.getElementById('modalTitle').textContent =
     `${label}：${val} — 搜尋結果（${matched.length} 筆）`;
   document.getElementById('modalHead').innerHTML = cols.map(c => `<th>${c.label}</th>`).join('');
