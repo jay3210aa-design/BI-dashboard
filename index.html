@@ -1024,7 +1024,8 @@ function render() {
     // WIP tags
     const wipTagsHtml = WIP_ST.map(s => {
       const q = wip[s];
-      return `<span class="wip-tag${q > 0 ? ' active' : ''}">${WIP_LABEL[s]} ${toK(q, true)}</span>`;
+      const clickAttr = q > 0 ? ` onclick="openDashWipDetail(${ruleIdx},'${s}')" style="cursor:pointer"` : '';
+      return `<span class="wip-tag${q > 0 ? ' active' : ''}"${clickAttr}>${WIP_LABEL[s]} ${toK(q, true)}</span>`;
     }).join('');
     const otherHtml = wip['其他'] > 0
       ? `<span class="wip-tag active">其他 ${toK(wip['其他'], true)}</span>` : '';
@@ -1415,6 +1416,12 @@ function openWipDetail(rowIdx, col) {
       operToStatus(getVal(r,'Oper')) === col
     );
   }
+  matched.sort((a, b) => {
+    const oa = String(getVal(a,'Oper')||''), ob = String(getVal(b,'Oper')||'');
+    if (oa !== ob) return oa.localeCompare(ob, undefined, {numeric:true});
+    const ta = String(getVal(a,'MVIN Time')||''), tb = String(getVal(b,'MVIN Time')||'');
+    return ta.localeCompare(tb);
+  });
   const colLabel = col==='hold'?'Hold':col==='total'?'合計':col;
   const cols = WIP_DETAIL_COLS;
   document.getElementById('modalTitle').textContent =
@@ -1425,6 +1432,33 @@ function openWipDetail(rowIdx, col) {
     ? `<tr><td colspan="${cols.length}" class="modal-empty">無資料</td></tr>`
     : matched.map(r =>
         `<tr>${cols.map(c=>`<td>${escHtml(String(c.compute ? c.compute(r) : (getVal(r,c.key)||'')))}</td>`).join('')}</tr>`
+      ).join('');
+  document.getElementById('detailModal').classList.add('open');
+}
+
+// ── 進度追蹤卡片 WIP tag 細項 ──────────────────────────
+function openDashWipDetail(ruleIdx, col) {
+  if (!hasWip) { alert('請先上傳 WIP 檔'); return; }
+  const rule = rules[ruleIdx];
+  if (!rule) return;
+  let matched = wipRows.filter(r =>
+    matchRule(rule, getVal(r,'Owner'), getVal(r,'Lead'), getVal(r,'Device')) &&
+    operToStatus(getVal(r,'Oper')) === col
+  );
+  matched.sort((a, b) => {
+    const oa = String(getVal(a,'Oper')||''), ob = String(getVal(b,'Oper')||'');
+    if (oa !== ob) return oa.localeCompare(ob, undefined, {numeric:true});
+    const ta = String(getVal(a,'MVIN Time')||''), tb = String(getVal(b,'MVIN Time')||'');
+    return ta.localeCompare(tb);
+  });
+  const cols = WIP_DETAIL_COLS;
+  document.getElementById('modalTitle').textContent =
+    `${rule.owner} / ${rule.lead}${rule.part ? ' / ' + rule.part : ''} — ${col} 明細（${matched.length} 筆）`;
+  document.getElementById('modalHead').innerHTML = cols.map(c => `<th>${c.label}</th>`).join('');
+  document.getElementById('modalBody').innerHTML = matched.length === 0
+    ? `<tr><td colspan="${cols.length}" class="modal-empty">無資料</td></tr>`
+    : matched.map(r =>
+        `<tr>${cols.map(c => `<td>${escHtml(String(c.compute ? c.compute(r) : (getVal(r, c.key) || '')))}</td>`).join('')}</tr>`
       ).join('');
   document.getElementById('detailModal').classList.add('open');
 }
