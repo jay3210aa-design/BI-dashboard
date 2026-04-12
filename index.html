@@ -381,6 +381,89 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
 .cap-coming-soon h2{font-size:20px;color:var(--text-secondary);margin-bottom:10px}
 .cap-coming-soon p{font-size:14px;max-width:420px;margin:0 auto 20px}
 .tab-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--bg-hover);color:var(--text-muted);border:1px solid var(--border)}
+
+/* ═══ Phase 3：機台效率 ═══ */
+.lul-upload-wrap{display:flex;justify-content:center;padding:24px 0 16px}
+.lul-upload-box{
+  background:var(--bg-secondary);border:2px dashed var(--border-light);border-radius:12px;
+  padding:18px 28px;cursor:pointer;display:flex;align-items:center;gap:16px;
+  min-width:300px;transition:border-color .15s;
+}
+.lul-upload-box:hover{border-color:var(--accent-dark)}
+.lul-upload-box.loaded{border-style:solid;border-color:var(--green)}
+.lul-upload-box input[type=file]{display:none}
+.lul-upload-icon{font-size:28px}
+.lul-upload-title{font-size:13px;font-weight:700;color:var(--text-primary)}
+.lul-upload-hint{font-size:11px;color:var(--text-muted);margin-top:3px}
+
+.lul-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.lul-sum-card{
+  background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;
+  padding:12px 16px;text-align:center;
+}
+.lul-sum-card.s-green{border-color:var(--green-border);background:var(--green-bg)}
+.lul-sum-card.s-blue{border-color:var(--accent-dark)}
+.lul-sum-card.s-yellow{border-color:var(--yellow-border);background:var(--yellow-bg)}
+.lul-sum-n{font-size:22px;font-weight:800;color:var(--text-primary)}
+.lul-sum-card.s-green .lul-sum-n{color:var(--green)}
+.lul-sum-card.s-blue .lul-sum-n{color:#63b3ed}
+.lul-sum-card.s-yellow .lul-sum-n{color:var(--yellow)}
+.lul-sum-l{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+.lul-filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.lul-filter-group{display:flex;gap:4px;flex-wrap:wrap}
+.lul-fbtn{
+  padding:4px 12px;border-radius:20px;border:1px solid var(--border-light);
+  background:var(--bg-secondary);color:var(--text-secondary);
+  font-size:12px;cursor:pointer;transition:all .12s;
+}
+.lul-fbtn:hover{border-color:var(--accent-dark);color:var(--text-primary)}
+.lul-fbtn.active{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff;font-weight:600}
+.lul-fbtn.run-active{background:var(--green);border-color:var(--green-border);color:#fff}
+.lul-fbtn.idle-active{background:#4a5568;border-color:#718096;color:#e2e8f0}
+
+.lul-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:8px;
+}
+.lul-card{
+  background:var(--bg-secondary);border:1px solid var(--border-light);
+  border-radius:8px;padding:10px 12px;transition:border-color .15s,opacity .15s;
+}
+.lul-card.lul-running{border-color:var(--green-border);background:#172219}
+.lul-card.lul-idle{opacity:.65}
+.lul-card:hover{border-color:#63b3ed;opacity:1}
+.lul-card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.lul-entity{font-size:16px;font-weight:800;color:var(--text-primary);font-family:var(--mono)}
+.lul-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.4px}
+.lul-badge.lul-running{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.lul-badge.lul-idle{background:#2d3748;color:#718096;border:1px solid #4a5568}
+.lul-row{display:flex;gap:4px;margin-bottom:3px;font-size:11px;align-items:flex-start}
+.lul-lbl{color:var(--text-muted);min-width:34px;flex-shrink:0;font-size:10px;padding-top:1px}
+.lul-val{color:var(--text-secondary);word-break:break-all;line-height:1.35}
+.lul-val.hi{color:var(--text-primary);font-weight:600}
+.lul-dots{display:flex;gap:3px;align-items:center;margin-left:auto}
+.lul-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+.lul-dot.R{background:#e53e3e}.lul-dot.G{background:#38a169}
+.lul-dot.Y{background:#d69e2e}.lul-dot.B{background:#3182ce}.lul-dot.P{background:#805ad5}
+.lul-idletime{font-size:11px;color:var(--text-muted);margin-top:4px}
+.lul-divider{height:1px;background:var(--border-light);margin:6px 0;opacity:.4}
+.lul-empty{color:var(--text-muted);padding:30px;grid-column:1/-1;text-align:center;font-size:13px}
+/* 效率狀態 */
+.lul-card.lul-eff-high{border-color:var(--green-border);background:#172219}
+.lul-card.lul-eff-mid{border-color:var(--yellow-border);background:#231e0e}
+.lul-card.lul-eff-low{border-color:var(--red-border);background:#221212}
+.lul-eff-wrap{margin-bottom:7px}
+.lul-eff-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:11px}
+.lul-eff-label{color:var(--text-muted)}
+.lul-eff-pct{font-weight:700;font-size:12px}
+.lul-eff-pct.high{color:var(--green)}.lul-eff-pct.mid{color:var(--yellow)}.lul-eff-pct.low{color:var(--red)}
+.lul-eff-track{height:5px;background:var(--bg-hover);border-radius:3px;overflow:hidden}
+.lul-eff-fill{height:100%;border-radius:3px;transition:width .3s}
+.lul-eff-fill.high{background:var(--green)}.lul-eff-fill.mid{background:var(--yellow)}.lul-eff-fill.low{background:var(--red)}
+.lul-eff-sub{font-size:10px;color:var(--text-muted);margin-top:3px}
+/* 摘要列效率分佈 */
+.lul-sum-card.s-red{border-color:var(--red-border);background:var(--red-bg)}
+.lul-sum-card.s-red .lul-sum-n{color:var(--red)}
 </style>
 </head>
 <body>
@@ -490,8 +573,8 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
         <thead>
           <tr>
             <th onclick="wipSort('owner')">Owner</th>
-            <th onclick="wipSort('body')">Body</th>
             <th onclick="wipSort('lead')">Lead</th>
+            <th onclick="wipSort('body')">Body</th>
             <th onclick="wipSort('x30')" class="num-col">x30</th>
             <th onclick="wipSort('x40')" class="num-col">x40</th>
             <th onclick="wipSort('x50')" class="num-col">x50</th>
@@ -557,7 +640,7 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
   <div class="cap-tabs">
     <button class="cap-tab-btn active" onclick="switchPhase('phase1',this)">⚙️ 第一階段：產能計算</button>
     <button class="cap-tab-btn" onclick="switchPhase('phase2',this)">🚫 第二階段：機台限制</button>
-    <button class="cap-tab-btn" onclick="switchPhase('phase3',this)">🔒 第三階段：配置建議 <span class="tab-badge">開發中</span></button>
+    <button class="cap-tab-btn" onclick="switchPhase('phase3',this)">🔒 第三階段：機台效率</button>
   </div>
   <div class="cap-main">
 
@@ -694,13 +777,72 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
       </div>
     </div>
 
-    <!-- Phase 3 -->
+    <!-- Phase 3：機台效率 -->
     <div class="cap-tab-panel" id="tab-phase3">
-      <div class="cap-coming-soon">
-        <div class="cs-icon">🤖</div>
-        <h2>第三階段：機台配置建議</h2>
-        <p>根據產品需求與機台限制，自動推薦最佳機台配置方案，支援手動微調，並輸出配置彙整表。</p>
-        <span class="badge-idle">🚧 開發中</span>
+
+      <!-- 上傳區 -->
+      <div class="lul-upload-wrap">
+        <div class="lul-upload-box" id="lul-drop-zone"
+             onclick="document.getElementById('lul-file-input').click()"
+             ondragover="event.preventDefault()"
+             ondrop="lulOnDrop(event)">
+          <input type="file" id="lul-file-input" accept=".xls,.xlsx" onchange="loadLulFile(this)">
+          <div class="lul-upload-icon">📊</div>
+          <div>
+            <div class="lul-upload-title">上傳機台效率檔</div>
+            <div class="lul-upload-hint" id="lul-upload-hint">拖曳或點擊上傳 .xls / .xlsx</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 內容區（載入後顯示） -->
+      <div id="lul-content" style="display:none">
+
+        <!-- 摘要卡片 -->
+        <div class="lul-summary" style="grid-template-columns:repeat(7,1fr)">
+          <div class="lul-sum-card">
+            <div class="lul-sum-n" id="lul-s-total">-</div>
+            <div class="lul-sum-l">機台總數</div>
+          </div>
+          <div class="lul-sum-card s-green">
+            <div class="lul-sum-n" id="lul-s-running">-</div>
+            <div class="lul-sum-l">運行中</div>
+          </div>
+          <div class="lul-sum-card">
+            <div class="lul-sum-n" id="lul-s-idle">-</div>
+            <div class="lul-sum-l">閒置</div>
+          </div>
+          <div class="lul-sum-card s-blue">
+            <div class="lul-sum-n" id="lul-s-util">-</div>
+            <div class="lul-sum-l">稼動率</div>
+          </div>
+          <div class="lul-sum-card s-green">
+            <div class="lul-sum-n" id="lul-s-eff-high">-</div>
+            <div class="lul-sum-l">效率優 ≥80%</div>
+          </div>
+          <div class="lul-sum-card s-yellow">
+            <div class="lul-sum-n" id="lul-s-eff-mid">-</div>
+            <div class="lul-sum-l">效率中 60-79%</div>
+          </div>
+          <div class="lul-sum-card s-red">
+            <div class="lul-sum-n" id="lul-s-eff-low">-</div>
+            <div class="lul-sum-l">效率低 &lt;60%</div>
+          </div>
+        </div>
+
+        <!-- 篩選列 -->
+        <div class="lul-filter-bar">
+          <div class="lul-filter-group" id="lul-series-btns"></div>
+          <div class="lul-filter-group" id="lul-status-btns">
+            <button class="lul-fbtn active" onclick="setLulStatus('',this)">全部狀態</button>
+            <button class="lul-fbtn" onclick="setLulStatus('RUNNING',this)">RUNNING</button>
+            <button class="lul-fbtn" onclick="setLulStatus('IDLE',this)">IDLE</button>
+          </div>
+        </div>
+
+        <!-- 機台卡片 -->
+        <div class="lul-grid" id="lul-grid"></div>
+
       </div>
     </div>
 
@@ -1231,7 +1373,7 @@ function groupWip(rows) {
 
 function wipSort(col) {
   if (wipSortCol === col) wipSortDir *= -1;
-  else { wipSortCol = col; wipSortDir = col==='owner'||col==='body'||col==='lead' ? 1 : -1; }
+  else { wipSortCol = col; wipSortDir = col==='owner'||col==='lead'||col==='body' ? 1 : -1; }
   renderWipTable();
 }
 
@@ -1257,18 +1399,26 @@ function renderWipTable() {
     (!fLead  || g.lead.toLowerCase().includes(fLead))
   );
 
-  // Sort
+  // 多條件排序：主鍵 → Owner → Lead → Body（依序為次要鍵，均升冪）
   data.sort((a, b) => {
     const av = a[wipSortCol], bv = b[wipSortCol];
-    if (typeof av === 'string') return av.localeCompare(bv) * wipSortDir;
-    return (av - bv) * wipSortDir;
+    const primary = typeof av === 'string'
+      ? av.localeCompare(bv) * wipSortDir
+      : (av - bv) * wipSortDir;
+    if (primary !== 0) return primary;
+    for (const k of ['owner', 'lead', 'body']) {
+      if (k === wipSortCol) continue;
+      const c = (a[k] || '').localeCompare(b[k] || '');
+      if (c !== 0) return c;
+    }
+    return 0;
   });
 
   // Update sort indicators
   document.querySelectorAll('.wip-tbl th').forEach(th => {
     th.classList.remove('sort-asc','sort-desc');
   });
-  const colMap = { owner:0,body:1,lead:2,x30:3,x40:4,x50:5,x60:6,x70:7,hold:8,total:9 };
+  const colMap = { owner:0,lead:1,body:2,x30:3,x40:4,x50:5,x60:6,x70:7,hold:8,total:9 };
   const thEl = document.querySelectorAll('.wip-tbl th')[colMap[wipSortCol]];
   if (thEl) thEl.classList.add(wipSortDir===1 ? 'sort-asc' : 'sort-desc');
 
@@ -1295,8 +1445,8 @@ function renderWipTable() {
   };
   const tbody = data.map((g, i) => `<tr>
     <td>${escHtml(g.owner)}</td>
-    <td>${escHtml(g.body)}</td>
     <td>${escHtml(g.lead)}</td>
+    <td>${escHtml(g.body)}</td>
     ${['x30','x40','x50','x60','x70'].map(s=>numCell(g[s],i,s)).join('')}
     ${numCell(g.hold,i,'hold')}
     ${numCell(g.total,i,'total')}
@@ -1319,11 +1469,11 @@ function exportWipExcel() {
   const kNum = v => Math.round(v / 1000);
 
   // ── Sheet1：彙總表 ──
-  const headers1 = ['Owner','Body','Lead','x30','x40','x50','x60','x70','Hold','合計'];
+  const headers1 = ['Owner','Lead','Body','x30','x40','x50','x60','x70','Hold','合計'];
   const rows1 = [headers1];
   wipTableData.forEach(g => {
     rows1.push([
-      g.owner, g.body, g.lead,
+      g.owner, g.lead, g.body,
       kNum(g.x30), kNum(g.x40), kNum(g.x50), kNum(g.x60), kNum(g.x70),
       kNum(g.hold), kNum(g.total)
     ]);
@@ -2013,6 +2163,257 @@ loadConstraints();
 renderAll();
 renderConstraints();
 populateUnitDropdowns();
+
+// ══════════════════════════════════════════════════════
+// Phase 3：機台效率
+// ══════════════════════════════════════════════════════
+let lulData         = [];
+let lulSeriesFilter = '';
+let lulStatusFilter = '';
+const LUL_UPH       = 5000;   // 目標 UPH
+
+// inTime 格式："MM/DD HH:MM"，假設今年（若未來則退一年）
+function lulParseInTime(str) {
+  const m = str.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const now  = new Date();
+  let   year = now.getFullYear();
+  const d    = new Date(year, +m[1] - 1, +m[2], +m[3], +m[4]);
+  if (d > now) d.setFullYear(year - 1);   // 未來日期退一年
+  return d;
+}
+
+// 回傳 { pct, cls, uph, elapsedHrs } 或 null
+function lulCalcEff(qty, inTimeStr) {
+  const t = lulParseInTime(inTimeStr);
+  if (!t) return null;
+  const elapsedHrs = (Date.now() - t.getTime()) / 3600000;
+  if (elapsedHrs <= 0) return null;
+  const uph = qty / elapsedHrs;
+  const pct = uph / LUL_UPH * 100;
+  const cls = pct >= 80 ? 'high' : pct >= 60 ? 'mid' : 'low';
+  return { pct: Math.round(pct * 10) / 10, cls, uph: Math.round(uph), elapsedHrs };
+}
+
+function lulOnDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  parseLulFile(file);
+}
+
+function loadLulFile(input) {
+  if (!input.files[0]) return;
+  parseLulFile(input.files[0]);
+}
+
+function parseLulFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb   = XLSX.read(ev.target.result, { type: 'binary' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // rows[0] = 標題列，rows[1+] = 資料
+      lulData = rows.slice(1)
+        .filter(r => r[0])
+        .map(r => ({
+          entity : String(r[0]).trim(),
+          partNo : String(r[1]).trim(),
+          package: String(r[2]).trim(),
+          lotNo  : String(r[3]).trim(),
+          oper   : r[4] !== '' ? String(Math.round(Number(r[4]))) : '',
+          color  : String(r[5]).trim(),
+          qty    : r[6] !== '' ? Number(r[6]) : 0,
+          status : String(r[7]).trim().toUpperCase(),
+          inTime : String(r[8]).trim(),
+        }));
+
+      // 取得機台系列（前綴字母）
+      const seriesSet = new Set();
+      lulData.forEach(d => {
+        const m = d.entity.match(/^([A-Za-z]+)/);
+        if (m) seriesSet.add(m[1]);
+      });
+      lulBuildSeriesBtns([...seriesSet].sort());
+
+      const box = document.getElementById('lul-drop-zone');
+      box.classList.add('loaded');
+      document.getElementById('lul-upload-hint').textContent =
+        `✅ 已載入 ${lulData.length} 台機台`;
+      document.getElementById('lul-content').style.display = 'block';
+
+      lulSeriesFilter = '';
+      lulStatusFilter = '';
+      lulRender();
+    } catch (err) {
+      alert('讀取失敗：' + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function lulBuildSeriesBtns(seriesList) {
+  const all = ['', ...seriesList];
+  document.getElementById('lul-series-btns').innerHTML = all.map((s, i) => {
+    const lbl    = s === '' ? '全部機台' : s;
+    const active = i === 0 ? ' active' : '';
+    return `<button class="lul-fbtn${active}" onclick="setLulSeries('${s}',this)">${lbl}</button>`;
+  }).join('');
+}
+
+function setLulSeries(s, btn) {
+  lulSeriesFilter = s;
+  document.querySelectorAll('#lul-series-btns .lul-fbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  lulRender();
+}
+
+function setLulStatus(s, btn) {
+  lulStatusFilter = s;
+  document.querySelectorAll('#lul-status-btns .lul-fbtn').forEach(b => {
+    b.classList.remove('active','run-active','idle-active');
+  });
+  if (s === 'RUNNING') btn.classList.add('run-active');
+  else if (s === 'IDLE') btn.classList.add('idle-active');
+  else btn.classList.add('active');
+  lulRender();
+}
+
+function lulRender() {
+  // ── 摘要：全量統計 ──
+  const totalAll   = lulData.length;
+  const runningAll = lulData.filter(d => d.status === 'RUNNING').length;
+  const idleAll    = totalAll - runningAll;
+  const util       = totalAll ? Math.round(runningAll / totalAll * 100) : 0;
+
+  // 效率分佈（僅 RUNNING 機台）
+  let effHigh = 0, effMid = 0, effLow = 0;
+  lulData.filter(d => d.status === 'RUNNING').forEach(d => {
+    const e = lulCalcEff(d.qty, d.inTime);
+    if (!e) return;
+    if (e.cls === 'high') effHigh++;
+    else if (e.cls === 'mid') effMid++;
+    else effLow++;
+  });
+
+  document.getElementById('lul-s-total').textContent    = totalAll;
+  document.getElementById('lul-s-running').textContent  = runningAll;
+  document.getElementById('lul-s-idle').textContent     = idleAll;
+  document.getElementById('lul-s-util').textContent     = util + '%';
+  document.getElementById('lul-s-eff-high').textContent = effHigh;
+  document.getElementById('lul-s-eff-mid').textContent  = effMid;
+  document.getElementById('lul-s-eff-low').textContent  = effLow;
+
+  // ── 篩選 ──
+  let data = lulData;
+  if (lulSeriesFilter)
+    data = data.filter(d => d.entity.startsWith(lulSeriesFilter));
+  if (lulStatusFilter)
+    data = data.filter(d => d.status === lulStatusFilter);
+
+  // ── 排序：效率低→中→高→IDLE，同效率依 Entity ──
+  const effOrder = { low: 0, mid: 1, high: 2 };
+  data = [...data].sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'RUNNING' ? -1 : 1;
+    if (a.status === 'RUNNING') {
+      const ea = lulCalcEff(a.qty, a.inTime);
+      const eb = lulCalcEff(b.qty, b.inTime);
+      const oa = ea ? effOrder[ea.cls] : 3;
+      const ob = eb ? effOrder[eb.cls] : 3;
+      if (oa !== ob) return oa - ob;   // 低效率排前面
+    }
+    return a.entity.localeCompare(b.entity);
+  });
+
+  // ── 渲染卡片 ──
+  const colorDots = str => (str || '').split(',').map(c => {
+    c = c.trim();
+    return c ? `<span class="lul-dot ${c}" title="${c}"></span>` : '';
+  }).join('');
+
+  const trunc = (s, n) => s.length > n ? s.slice(0, n) + '…' : s;
+
+  const fmtHrs = h => {
+    const d = Math.floor(h / 24), hr = Math.floor(h % 24), mn = Math.round((h % 1) * 60);
+    return d > 0 ? `${d}d ${hr}h` : hr > 0 ? `${hr}h ${mn}m` : `${mn}m`;
+  };
+
+  const cards = data.map(d => {
+    const run = d.status === 'RUNNING';
+    let cardClass = run ? 'lul-running' : 'lul-idle';
+    let effHtml = '';
+    let body = '';
+
+    if (run) {
+      const e = lulCalcEff(d.qty, d.inTime);
+      if (e) {
+        cardClass = `lul-card lul-eff-${e.cls}`;
+        const barW = Math.min(e.pct, 100).toFixed(1);
+        effHtml = `
+          <div class="lul-eff-wrap">
+            <div class="lul-eff-top">
+              <span class="lul-eff-label">效率</span>
+              <span class="lul-eff-pct ${e.cls}">${e.pct}%</span>
+            </div>
+            <div class="lul-eff-track">
+              <div class="lul-eff-fill ${e.cls}" style="width:${barW}%"></div>
+            </div>
+            <div class="lul-eff-sub">${e.uph.toLocaleString()} UPH／目標 ${LUL_UPH.toLocaleString()} ｜ 已運行 ${fmtHrs(e.elapsedHrs)}</div>
+          </div>`;
+      } else {
+        cardClass = 'lul-card lul-running';
+      }
+
+      body = `
+        ${effHtml}
+        <div class="lul-divider"></div>
+        <div class="lul-row">
+          <span class="lul-lbl">PartNo</span>
+          <span class="lul-val" title="${escHtml(d.partNo)}">${escHtml(trunc(d.partNo, 22))}</span>
+        </div>
+        <div class="lul-row">
+          <span class="lul-lbl">Pkg</span>
+          <span class="lul-val" title="${escHtml(d.package)}">${escHtml(trunc(d.package, 20))}</span>
+        </div>
+        <div class="lul-row">
+          <span class="lul-lbl">Lot</span>
+          <span class="lul-val hi">${escHtml(d.lotNo)}</span>
+        </div>
+        <div class="lul-row">
+          <span class="lul-lbl">Oper</span>
+          <span class="lul-val hi">${d.oper}</span>
+        </div>
+        <div class="lul-row">
+          <span class="lul-lbl">BIB</span>
+          <span class="lul-val" style="letter-spacing:.5px">${escHtml(d.color)}</span>
+        </div>
+        <div class="lul-row">
+          <span class="lul-lbl">Qty</span>
+          <span class="lul-val hi">${d.qty.toLocaleString()}</span>
+        </div>
+        <div class="lul-row">
+          <span class="lul-lbl">In</span>
+          <span class="lul-val">${escHtml(d.inTime)}</span>
+        </div>`;
+    } else {
+      cardClass = 'lul-card lul-idle';
+      body = `<div class="lul-idletime">最後異動：${escHtml(d.inTime)}</div>`;
+    }
+
+    return `<div class="${cardClass}">
+      <div class="lul-card-hd">
+        <span class="lul-entity">${escHtml(d.entity)}</span>
+        <span class="lul-badge ${run ? 'lul-running' : 'lul-idle'}">${d.status}</span>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+
+  document.getElementById('lul-grid').innerHTML =
+    cards || '<div class="lul-empty">無符合條件的機台</div>';
+}
 </script>
 </body>
 </html>
