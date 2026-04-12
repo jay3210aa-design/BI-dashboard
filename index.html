@@ -482,8 +482,9 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
 <div class="tabs">
   <button class="tab-btn active" id="tab-btn-dashboard" onclick="switchTab('dashboard',this)">📈 進度追蹤</button>
   <button class="tab-btn" id="tab-btn-wip" onclick="switchTab('wip',this);renderWipTable()">📦 WIP 總覽</button>
-  <button class="tab-btn" id="tab-btn-rules" onclick="switchTab('rules',this)">⚙️ 規則設定</button>
-  <button class="tab-btn" id="tab-btn-capacity" onclick="switchTab('capacity',this);renderAll()">⚡ 產能規劃</button>
+  <button class="tab-btn" id="tab-btn-phase1" onclick="switchTab('phase1',this);renderAll()">⚙️ 產能計算</button>
+  <button class="tab-btn" id="tab-btn-phase2" onclick="switchTab('phase2',this);renderAll();populateUnitDropdowns()">🚫 機台限制</button>
+  <button class="tab-btn" id="tab-btn-phase3" onclick="switchTab('phase3',this);renderAll()">⚡ 機台效率</button>
 </div>
 
 <!-- ── Dashboard ── -->
@@ -512,7 +513,8 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
       <div class="summary-card"><div class="num c-red" id="sum-bad">–</div><div class="lbl">落後（&lt;70%）</div></div>
     </div>
 
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+      <button class="btn btn-edit" onclick="switchTab('rules',null)" title="規則設定">⚙️ 規則設定</button>
       <button class="btn btn-primary" onclick="exportExcel()">⬇ 匯出 Excel</button>
     </div>
     <div class="cards-grid" id="cards-grid"></div>
@@ -635,17 +637,9 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
   </div>
 </div>
 
-<!-- ── 產能規劃 ── -->
-<div class="tab-content" id="tab-capacity">
-  <div class="cap-tabs">
-    <button class="cap-tab-btn active" onclick="switchPhase('phase1',this)">⚙️ 第一階段：產能計算</button>
-    <button class="cap-tab-btn" onclick="switchPhase('phase2',this)">🚫 第二階段：機台限制</button>
-    <button class="cap-tab-btn" onclick="switchPhase('phase3',this)">🔒 第三階段：機台效率</button>
-  </div>
+<!-- ── 產能計算 ── -->
+<div class="tab-content" id="tab-phase1">
   <div class="cap-main">
-
-    <!-- Phase 1 -->
-    <div class="cap-tab-panel active" id="tab-phase1">
       <div class="section">
         <div class="section-header">
           <div class="section-title">🏭 機台管理</div>
@@ -703,10 +697,12 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
         <div class="cap-summary-grid" id="summaryGrid"></div>
         <div class="total-bar" id="totalBar"></div>
       </div>
-    </div>
+  </div>
+</div>
 
-    <!-- Phase 2 -->
-    <div class="cap-tab-panel" id="tab-phase2">
+<!-- ── 機台限制 ── -->
+<div class="tab-content" id="tab-phase2">
+  <div class="cap-main">
       <div class="section">
         <div class="section-header">
           <div class="section-title">🚫 機台限制規則 <span class="tab-badge" id="constraintCount">0 條</span></div>
@@ -775,10 +771,12 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
         </div>
         <div id="queryResult" style="padding:18px"><div class="cap-empty">請輸入或選取機台編號後點擊查詢</div></div>
       </div>
-    </div>
+  </div>
+</div>
 
-    <!-- Phase 3：機台效率 -->
-    <div class="cap-tab-panel" id="tab-phase3">
+<!-- ── 機台效率 ── -->
+<div class="tab-content" id="tab-phase3">
+  <div class="cap-main">
 
       <!-- 上傳區 -->
       <div class="lul-upload-wrap">
@@ -844,7 +842,6 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
         <div class="lul-grid" id="lul-grid"></div>
 
       </div>
-    </div>
 
   </div>
 </div>
@@ -946,7 +943,7 @@ function switchTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 // ── Helpers ─────────────────────────────────────────────
