@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BI 整合儀表板</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #f5f7fa; --card-bg: #fff; --border: #e2e8f0;
@@ -1032,7 +1032,7 @@ function loadFiles(input) {
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const wb = XLSX.read(e.target.result, { type:'array', cellDates: true });
+        const wb = XLSX.read(e.target.result, { type:'binary', cellDates: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, { defval:'' });
         if (!data.length) return;
@@ -1050,7 +1050,7 @@ function loadFiles(input) {
         document.getElementById('status-output').textContent = '⚠ 解析失敗：' + err.message;
       }
     };
-    reader.readAsArrayBuffer(file);
+    reader.readAsBinaryString(file);
   });
 }
 
@@ -1076,7 +1076,7 @@ function loadOutput(input) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type:'array', cellDates: true });
+      const wb = XLSX.read(e.target.result, { type:'binary', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
       allOutputRows = data;
@@ -1089,7 +1089,7 @@ function loadOutput(input) {
       document.getElementById('status-output').textContent = '⚠ 解析失敗：' + err.message;
     }
   };
-  reader.readAsArrayBuffer(file);
+  reader.readAsBinaryString(file);
 }
 
 function loadWip(input) {
@@ -1097,7 +1097,7 @@ function loadWip(input) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type:'array' });
+      const wb = XLSX.read(e.target.result, { type:'binary' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       wipRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
       hasWip = true;
@@ -1109,7 +1109,7 @@ function loadWip(input) {
       document.getElementById('status-wip').textContent = '⚠ 解析失敗：' + err.message;
     }
   };
-  reader.readAsArrayBuffer(file);
+  reader.readAsBinaryString(file);
 }
 
 // ── Compute per rule ────────────────────────────────────
