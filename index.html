@@ -464,6 +464,29 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
 /* 摘要列效率分佈 */
 .lul-sum-card.s-red{border-color:var(--red-border);background:var(--red-bg)}
 .lul-sum-card.s-red .lul-sum-n{color:var(--red)}
+
+/* ── Auto Refresh Panel ── */
+.ar-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1001;align-items:center;justify-content:center;padding:16px}
+.ar-panel.open{display:flex}
+.ar-box{background:var(--card-bg);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);width:440px;max-width:95vw}
+.ar-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.ar-title{font-size:14px;font-weight:700}
+.ar-body{padding:18px;display:flex;flex-direction:column;gap:14px}
+.ar-section-label{font-size:11px;color:var(--text-sub);font-weight:600;text-transform:uppercase;margin-bottom:8px}
+.ar-file-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ar-file-row:last-child{margin-bottom:0}
+.ar-file-name{font-size:12px;font-weight:600;min-width:60px;color:var(--text)}
+.ar-file-status{flex:1;font-size:12px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-file-status.ok{color:#38a169;font-weight:600}
+.ar-interval-row{display:flex;align-items:center;gap:10px}
+.ar-interval-label{font-size:13px;font-weight:600;white-space:nowrap}
+.ar-select{padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:13px;cursor:pointer;flex:1}
+.ar-select:focus{outline:none;border-color:var(--accent)}
+.ar-countdown{text-align:center;padding:12px;background:var(--pill-bg);border-radius:8px}
+.ar-countdown-time{font-size:28px;font-weight:800;font-family:monospace;color:var(--accent);letter-spacing:2px}
+.ar-countdown-label{font-size:11px;color:var(--text-sub);margin-top:2px}
+.ar-last-update{font-size:11px;color:var(--text-sub);margin-top:6px}
+.ar-actions{display:flex;gap:8px}
 </style>
 </head>
 <body>
@@ -477,6 +500,7 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
     <input type="date" id="dateEnd" onchange="changeRange()">
     <button class="btn-today" onclick="resetToToday()">今日</button>
   </div>
+  <button class="btn-today" id="ar-toggle-btn" onclick="openArPanel()" style="font-weight:700">🔄 自動更新</button>
 </div>
 
 <div class="tabs">
@@ -858,6 +882,65 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
         <thead><tr id="modalHead"></tr></thead>
         <tbody id="modalBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Auto Refresh Panel ── -->
+<div class="ar-panel" id="arPanel" onclick="closeArPanel(event)">
+  <div class="ar-box">
+    <div class="ar-header">
+      <span class="ar-title">🔄 自動更新設定</span>
+      <button class="modal-close" onclick="document.getElementById('arPanel').classList.remove('open')">✕</button>
+    </div>
+    <div class="ar-body">
+
+      <!-- 檔案授權 -->
+      <div>
+        <div class="ar-section-label">選擇資料檔案（授權一次，之後自動讀取）</div>
+        <div class="ar-file-row">
+          <span class="ar-file-name">Output</span>
+          <span class="ar-file-status" id="ar-output-status">未授權</span>
+          <button class="btn btn-edit btn-sm" onclick="arPickFile('output')">選擇檔案</button>
+        </div>
+        <div class="ar-file-row">
+          <span class="ar-file-name">WIP</span>
+          <span class="ar-file-status" id="ar-wip-status">未授權</span>
+          <button class="btn btn-edit btn-sm" onclick="arPickFile('wip')">選擇檔案</button>
+        </div>
+        <div class="ar-file-row">
+          <span class="ar-file-name">效率檔</span>
+          <span class="ar-file-status" id="ar-lul-status">未授權</span>
+          <button class="btn btn-edit btn-sm" onclick="arPickFile('lul')">選擇檔案</button>
+        </div>
+      </div>
+
+      <!-- 更新間隔 -->
+      <div class="ar-interval-row">
+        <span class="ar-interval-label">更新間隔</span>
+        <select id="ar-interval" class="ar-select">
+          <option value="7200">2 小時</option>
+          <option value="14400" selected>4 小時</option>
+          <option value="21600">6 小時</option>
+          <option value="28800">8 小時</option>
+          <option value="43200">12 小時</option>
+          <option value="86400">24 小時</option>
+        </select>
+      </div>
+
+      <!-- 倒數計時（執行中才顯示） -->
+      <div class="ar-countdown" id="ar-countdown" style="display:none">
+        <div class="ar-countdown-time" id="ar-countdown-time">--:--:--</div>
+        <div class="ar-countdown-label">距下次更新</div>
+        <div class="ar-last-update" id="ar-last-update"></div>
+      </div>
+
+      <!-- 操作按鈕 -->
+      <div class="ar-actions">
+        <button class="btn btn-primary" style="flex:1" id="ar-start-btn" onclick="arStart()">▶ 開始自動更新</button>
+        <button class="btn btn-danger" style="flex:1;display:none" id="ar-stop-btn" onclick="arStop()">⏹ 停止</button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -2410,6 +2493,150 @@ function lulRender() {
 
   document.getElementById('lul-grid').innerHTML =
     cards || '<div class="lul-empty">無符合條件的機台</div>';
+}
+
+// ══ Auto Refresh ════════════════════════════════════════
+const arHandles  = { output: null, wip: null, lul: null };
+let arTimer          = null;
+let arCountdownTimer = null;
+let arNextAt         = 0;
+
+// 選擇並授權檔案
+async function arPickFile(type) {
+  if (!window.showOpenFilePicker) {
+    alert('您的瀏覽器不支援 File System Access API，請使用 Chrome 或 Edge。');
+    return;
+  }
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: 'Excel 檔案', accept: {
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
+        'application/vnd.ms-excel': ['.xls']
+      }}],
+      multiple: false
+    });
+    arHandles[type] = handle;
+    const statusId = { output: 'ar-output-status', wip: 'ar-wip-status', lul: 'ar-lul-status' }[type];
+    const el = document.getElementById(statusId);
+    el.textContent = '✓ ' + handle.name;
+    el.classList.add('ok');
+  } catch (e) {
+    if (e.name !== 'AbortError') alert('選擇失敗：' + e.message);
+  }
+}
+
+// 讀取所有已授權的檔案並更新畫面
+async function arReadAll() {
+  const updated = [];
+  for (const [type, handle] of Object.entries(arHandles)) {
+    if (!handle) continue;
+    try {
+      const file = await handle.getFile();
+      const buf  = await file.arrayBuffer();
+      if (type === 'lul') {
+        // 效率檔：按列讀取
+        const wb   = XLSX.read(buf, { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+        lulData = rows.slice(1).filter(r => r[0]).map(r => ({
+          entity : String(r[0]).trim(),
+          partNo : String(r[1]).trim(),
+          package: String(r[2]).trim(),
+          lotNo  : String(r[3]).trim(),
+          oper   : r[4] !== '' ? String(Math.round(Number(r[4]))) : '',
+          color  : String(r[5]).trim(),
+          qty    : r[6] !== '' ? Number(r[6]) : 0,
+          status : String(r[7]).trim().toUpperCase(),
+          inTime : String(r[8]).trim(),
+        }));
+        const seriesSet = new Set();
+        lulData.forEach(d => { const m = d.entity.match(/^([A-Za-z]+)/); if (m) seriesSet.add(m[1]); });
+        lulBuildSeriesBtns([...seriesSet].sort());
+        document.getElementById('lul-upload-hint').textContent = `✅ 已載入 ${lulData.length} 台機台`;
+        document.getElementById('lul-content').style.display = 'block';
+        document.getElementById('lul-drop-zone').classList.add('loaded');
+        lulSeriesFilter = ''; lulStatusFilter = '';
+        lulRender();
+        updated.push('效率檔');
+      } else {
+        // Output / WIP：按欄位讀取
+        const wb   = XLSX.read(buf, { type: 'array', cellDates: true });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!data.length) continue;
+        if (type === 'output') { processOutput(data); updated.push('Output'); }
+        else                   { processWip(data);    updated.push('WIP');    }
+      }
+    } catch (e) {
+      console.warn('[AutoRefresh] 讀取失敗：', type, e);
+    }
+  }
+  // 更新顯示時間
+  if (updated.length) {
+    const ts = new Date().toLocaleTimeString('zh-TW');
+    document.getElementById('ar-last-update').textContent =
+      `上次更新：${ts}（${updated.join('、')}）`;
+  }
+}
+
+function arStart() {
+  const hasAny = Object.values(arHandles).some(h => h !== null);
+  if (!hasAny) { alert('請先選擇至少一個資料檔案'); return; }
+
+  const secs = parseInt(document.getElementById('ar-interval').value);
+
+  // 立即執行一次
+  arReadAll();
+  arNextAt = Date.now() + secs * 1000;
+
+  // 定時更新
+  arTimer = setInterval(() => {
+    arReadAll();
+    arNextAt = Date.now() + secs * 1000;
+  }, secs * 1000);
+
+  // 倒數計時器（每秒更新）
+  arCountdownTimer = setInterval(() => {
+    const remain = Math.max(0, arNextAt - Date.now());
+    const h = Math.floor(remain / 3600000);
+    const m = Math.floor((remain % 3600000) / 60000);
+    const s = Math.floor((remain % 60000) / 1000);
+    document.getElementById('ar-countdown-time').textContent =
+      String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }, 1000);
+
+  // 切換 UI
+  document.getElementById('ar-start-btn').style.display  = 'none';
+  document.getElementById('ar-stop-btn').style.display   = '';
+  document.getElementById('ar-countdown').style.display  = 'block';
+  document.getElementById('ar-interval').disabled        = true;
+  const btn = document.getElementById('ar-toggle-btn');
+  btn.textContent = '🟢 自動更新中';
+  btn.style.color = '#38a169';
+  btn.style.borderColor = '#38a169';
+}
+
+function arStop() {
+  clearInterval(arTimer);
+  clearInterval(arCountdownTimer);
+  arTimer = null; arCountdownTimer = null;
+
+  // 切換 UI
+  document.getElementById('ar-start-btn').style.display  = '';
+  document.getElementById('ar-stop-btn').style.display   = 'none';
+  document.getElementById('ar-countdown').style.display  = 'none';
+  document.getElementById('ar-interval').disabled        = false;
+  const btn = document.getElementById('ar-toggle-btn');
+  btn.textContent = '🔄 自動更新';
+  btn.style.color = '';
+  btn.style.borderColor = '';
+}
+
+function openArPanel() {
+  document.getElementById('arPanel').classList.add('open');
+}
+function closeArPanel(e) {
+  if (e.target === document.getElementById('arPanel'))
+    document.getElementById('arPanel').classList.remove('open');
 }
 </script>
 </body>
