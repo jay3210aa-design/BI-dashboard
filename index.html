@@ -902,21 +902,21 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
 
       <!-- 檔案授權 -->
       <div>
-        <div class="ar-section-label">選擇資料檔案（授權一次，之後自動讀取）</div>
+        <div class="ar-section-label">選擇資料夾（授權一次，之後自動抓最新檔案）</div>
         <div class="ar-file-row">
           <span class="ar-file-name">Output</span>
           <span class="ar-file-status" id="ar-output-status">未授權</span>
-          <button class="btn btn-edit btn-sm" onclick="arPickFile('output')">選擇檔案</button>
+          <button class="btn btn-edit btn-sm" onclick="arPickFile('output')">選擇資料夾</button>
         </div>
         <div class="ar-file-row">
           <span class="ar-file-name">WIP</span>
           <span class="ar-file-status" id="ar-wip-status">未授權</span>
-          <button class="btn btn-edit btn-sm" onclick="arPickFile('wip')">選擇檔案</button>
+          <button class="btn btn-edit btn-sm" onclick="arPickFile('wip')">選擇資料夾</button>
         </div>
         <div class="ar-file-row">
           <span class="ar-file-name">效率檔</span>
           <span class="ar-file-status" id="ar-lul-status">未授權</span>
-          <button class="btn btn-edit btn-sm" onclick="arPickFile('lul')">選擇檔案</button>
+          <button class="btn btn-edit btn-sm" onclick="arPickFile('lul')">選擇資料夾</button>
         </div>
       </div>
 
@@ -2498,7 +2498,8 @@ function lulRender() {
 }
 
 // ══ Auto Refresh ════════════════════════════════════════
-const arHandles  = { output: null, wip: null, lul: null };
+const arHandles  = { output: null, wip: null, lul: null };  // 資料夾 handle
+const arPrefix   = { output: 'BinData_Yield', wip: 'WipArrange', lul: 'BI_LUL' };
 let arTimer          = null;   // setTimeout handle
 let arCountdownTimer = null;   // setInterval handle (每秒倒數)
 let arScheduledTimes = ['06:40', '10:10', '14:10', '16:10'];
@@ -2569,38 +2570,48 @@ function arScheduleNext() {
   }, ms);
 }
 
-// 選擇並授權檔案
+// 選擇資料夾並授權
 async function arPickFile(type) {
-  if (!window.showOpenFilePicker) {
+  if (!window.showDirectoryPicker) {
     alert('您的瀏覽器不支援 File System Access API，請使用 Chrome 或 Edge。');
     return;
   }
   try {
-    const [handle] = await window.showOpenFilePicker({
-      types: [{ description: 'Excel 檔案', accept: {
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
-        'application/vnd.ms-excel': ['.xls']
-      }}],
-      multiple: false
-    });
-    arHandles[type] = handle;
+    const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+    arHandles[type] = dirHandle;
     const statusId = { output: 'ar-output-status', wip: 'ar-wip-status', lul: 'ar-lul-status' }[type];
     const el = document.getElementById(statusId);
-    el.textContent = '✓ ' + handle.name;
+    el.textContent = '✓ ' + dirHandle.name + '/';
     el.classList.add('ok');
   } catch (e) {
     if (e.name !== 'AbortError') alert('選擇失敗：' + e.message);
   }
 }
 
-// 讀取所有已授權的檔案並更新畫面
+// 在資料夾中找最新的符合前綴的 .xlsx 檔
+async function arFindLatest(dirHandle, prefix) {
+  let latest = null;
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind !== 'file') continue;
+    const lower = name.toLowerCase();
+    if (!name.startsWith(prefix)) continue;
+    if (!lower.endsWith('.xlsx') && !lower.endsWith('.xls')) continue;
+    const file = await handle.getFile();
+    if (!latest || file.lastModified > latest.lastModified) latest = file;
+  }
+  return latest;
+}
+
+// 讀取所有已授權資料夾並更新畫面
 async function arReadAll() {
-  const updated = [];
-  for (const [type, handle] of Object.entries(arHandles)) {
-    if (!handle) continue;
+  const updated = [];  // [{label, name}]
+  for (const [type, dirHandle] of Object.entries(arHandles)) {
+    if (!dirHandle) continue;
     try {
-      const file = await handle.getFile();
+      const file = await arFindLatest(dirHandle, arPrefix[type]);
+      if (!file) { console.warn('[AutoRefresh] 找不到符合的檔案：', type); continue; }
       const buf  = await file.arrayBuffer();
+      const fname = file.name;
       if (type === 'lul') {
         // 效率檔：按列讀取
         const wb   = XLSX.read(buf, { type: 'array' });
@@ -2624,15 +2635,15 @@ async function arReadAll() {
         document.getElementById('lul-drop-zone').classList.add('loaded');
         lulSeriesFilter = ''; lulStatusFilter = '';
         lulRender();
-        updated.push('效率檔');
+        updated.push(`效率檔（${fname}）`);
       } else {
         // Output / WIP：按欄位讀取
         const wb   = XLSX.read(buf, { type: 'array', cellDates: true });
         const ws   = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
         if (!data.length) continue;
-        if (type === 'output') { processOutput(data); updated.push('Output'); }
-        else                   { processWip(data);    updated.push('WIP');    }
+        if (type === 'output') { processOutput(data); updated.push(`Output（${fname}）`); }
+        else                   { processWip(data);    updated.push(`WIP（${fname}）`);    }
       }
     } catch (e) {
       console.warn('[AutoRefresh] 讀取失敗：', type, e);
@@ -2642,7 +2653,7 @@ async function arReadAll() {
   if (updated.length) {
     const ts = new Date().toLocaleTimeString('zh-TW');
     document.getElementById('ar-last-update').textContent =
-      `上次更新：${ts}（${updated.join('、')}）`;
+      `上次更新：${ts}\n${updated.join('、')}`;
   }
 }
 
