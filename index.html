@@ -478,10 +478,15 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
 .ar-file-name{font-size:12px;font-weight:600;min-width:60px;color:var(--text)}
 .ar-file-status{flex:1;font-size:12px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ar-file-status.ok{color:#38a169;font-weight:600}
-.ar-interval-row{display:flex;align-items:center;gap:10px}
-.ar-interval-label{font-size:13px;font-weight:600;white-space:nowrap}
-.ar-select{padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:13px;cursor:pointer;flex:1}
-.ar-select:focus{outline:none;border-color:var(--accent)}
+.ar-time-section{display:flex;flex-direction:column;gap:8px}
+.ar-time-add-row{display:flex;gap:8px;align-items:center}
+.ar-time-input{padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:13px;flex:1}
+.ar-time-input:focus{outline:none;border-color:var(--accent)}
+.ar-time-tags{display:flex;flex-wrap:wrap;gap:6px;min-height:28px}
+.ar-time-tag{display:inline-flex;align-items:center;gap:4px;background:var(--pill-bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;font-weight:600}
+.ar-time-tag-del{background:none;border:none;cursor:pointer;color:var(--text-sub);font-size:14px;padding:0;line-height:1}
+.ar-time-tag-del:hover{color:#e53e3e}
+.ar-next-time{font-size:11px;color:var(--text-sub)}
 .ar-countdown{text-align:center;padding:12px;background:var(--pill-bg);border-radius:8px}
 .ar-countdown-time{font-size:28px;font-weight:800;font-family:monospace;color:var(--accent);letter-spacing:2px}
 .ar-countdown-label{font-size:11px;color:var(--text-sub);margin-top:2px}
@@ -915,23 +920,20 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
         </div>
       </div>
 
-      <!-- 更新間隔 -->
-      <div class="ar-interval-row">
-        <span class="ar-interval-label">更新間隔</span>
-        <select id="ar-interval" class="ar-select">
-          <option value="7200">2 小時</option>
-          <option value="14400" selected>4 小時</option>
-          <option value="21600">6 小時</option>
-          <option value="28800">8 小時</option>
-          <option value="43200">12 小時</option>
-          <option value="86400">24 小時</option>
-        </select>
+      <!-- 指定更新時間 -->
+      <div class="ar-time-section">
+        <div class="ar-section-label">指定更新時間</div>
+        <div class="ar-time-add-row">
+          <input type="time" id="ar-time-input" class="ar-time-input">
+          <button class="btn btn-edit btn-sm" id="ar-time-add-btn" onclick="arAddTime()">＋ 加入</button>
+        </div>
+        <div class="ar-time-tags" id="ar-time-tags"></div>
       </div>
 
       <!-- 倒數計時（執行中才顯示） -->
       <div class="ar-countdown" id="ar-countdown" style="display:none">
         <div class="ar-countdown-time" id="ar-countdown-time">--:--:--</div>
-        <div class="ar-countdown-label">距下次更新</div>
+        <div class="ar-countdown-label" id="ar-countdown-label">距下次更新</div>
         <div class="ar-last-update" id="ar-last-update"></div>
       </div>
 
@@ -2497,9 +2499,75 @@ function lulRender() {
 
 // ══ Auto Refresh ════════════════════════════════════════
 const arHandles  = { output: null, wip: null, lul: null };
-let arTimer          = null;
-let arCountdownTimer = null;
-let arNextAt         = 0;
+let arTimer          = null;   // setTimeout handle
+let arCountdownTimer = null;   // setInterval handle (每秒倒數)
+let arScheduledTimes = ['06:40', '10:10', '14:10', '16:10'];
+
+// 初始化時間標籤
+;(function arInitTags() {
+  arScheduledTimes.forEach(t => _arAppendTag(t));
+})();
+
+function _arAppendTag(time) {
+  const container = document.getElementById('ar-time-tags');
+  const tag = document.createElement('span');
+  tag.className = 'ar-time-tag';
+  tag.dataset.time = time;
+  tag.innerHTML = `${time} <button class="ar-time-tag-del" onclick="arRemoveTime('${time}')">✕</button>`;
+  container.appendChild(tag);
+}
+
+function arAddTime() {
+  const input = document.getElementById('ar-time-input');
+  const val = input.value;
+  if (!val) { alert('請選擇時間'); return; }
+  if (arScheduledTimes.includes(val)) { alert('此時間已存在'); return; }
+  arScheduledTimes.push(val);
+  arScheduledTimes.sort();
+  // 重繪所有標籤（保持排序）
+  const container = document.getElementById('ar-time-tags');
+  container.innerHTML = '';
+  arScheduledTimes.forEach(t => _arAppendTag(t));
+  input.value = '';
+}
+
+function arRemoveTime(time) {
+  arScheduledTimes = arScheduledTimes.filter(t => t !== time);
+  const tag = document.querySelector(`#ar-time-tags [data-time="${time}"]`);
+  if (tag) tag.remove();
+}
+
+// 取得下一個排程時間（Date 物件）
+function arGetNextDate() {
+  if (!arScheduledTimes.length) return null;
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const sorted = [...arScheduledTimes].sort();
+  for (const t of sorted) {
+    const [h, m] = t.split(':').map(Number);
+    if (h * 60 + m > nowMins + 0.1) {
+      const next = new Date(now);
+      next.setHours(h, m, 0, 0);
+      return next;
+    }
+  }
+  // 今日全部已過，取明天第一個時間
+  const [h, m] = sorted[0].split(':').map(Number);
+  const next = new Date(now);
+  next.setDate(next.getDate() + 1);
+  next.setHours(h, m, 0, 0);
+  return next;
+}
+
+function arScheduleNext() {
+  const next = arGetNextDate();
+  if (!next) return;
+  const ms = next - Date.now();
+  arTimer = setTimeout(() => {
+    arReadAll();
+    arScheduleNext();
+  }, ms);
+}
 
 // 選擇並授權檔案
 async function arPickFile(type) {
@@ -2581,34 +2649,37 @@ async function arReadAll() {
 function arStart() {
   const hasAny = Object.values(arHandles).some(h => h !== null);
   if (!hasAny) { alert('請先選擇至少一個資料檔案'); return; }
+  if (!arScheduledTimes.length) { alert('請至少設定一個更新時間'); return; }
 
-  const secs = parseInt(document.getElementById('ar-interval').value);
-
-  // 立即執行一次
+  // 立即讀取一次
   arReadAll();
-  arNextAt = Date.now() + secs * 1000;
 
-  // 定時更新
-  arTimer = setInterval(() => {
-    arReadAll();
-    arNextAt = Date.now() + secs * 1000;
-  }, secs * 1000);
+  // 排程到下一個指定時間
+  arScheduleNext();
 
-  // 倒數計時器（每秒更新）
+  // 每秒更新倒數顯示
   arCountdownTimer = setInterval(() => {
-    const remain = Math.max(0, arNextAt - Date.now());
+    const next = arGetNextDate();
+    if (!next) return;
+    const remain = Math.max(0, next - Date.now());
     const h = Math.floor(remain / 3600000);
     const m = Math.floor((remain % 3600000) / 60000);
     const s = Math.floor((remain % 60000) / 1000);
+    const nextStr = next.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('ar-countdown-time').textContent =
       String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    document.getElementById('ar-countdown-label').textContent = `距 ${nextStr} 更新`;
   }, 1000);
+
+  // 鎖定時間設定
+  document.getElementById('ar-time-input').disabled    = true;
+  document.getElementById('ar-time-add-btn').disabled  = true;
+  document.querySelectorAll('.ar-time-tag-del').forEach(b => b.disabled = true);
 
   // 切換 UI
   document.getElementById('ar-start-btn').style.display  = 'none';
   document.getElementById('ar-stop-btn').style.display   = '';
   document.getElementById('ar-countdown').style.display  = 'block';
-  document.getElementById('ar-interval').disabled        = true;
   const btn = document.getElementById('ar-toggle-btn');
   btn.textContent = '🟢 自動更新中';
   btn.style.color = '#38a169';
@@ -2616,15 +2687,19 @@ function arStart() {
 }
 
 function arStop() {
-  clearInterval(arTimer);
+  clearTimeout(arTimer);
   clearInterval(arCountdownTimer);
   arTimer = null; arCountdownTimer = null;
+
+  // 解鎖時間設定
+  document.getElementById('ar-time-input').disabled    = false;
+  document.getElementById('ar-time-add-btn').disabled  = false;
+  document.querySelectorAll('.ar-time-tag-del').forEach(b => b.disabled = false);
 
   // 切換 UI
   document.getElementById('ar-start-btn').style.display  = '';
   document.getElementById('ar-stop-btn').style.display   = 'none';
   document.getElementById('ar-countdown').style.display  = 'none';
-  document.getElementById('ar-interval').disabled        = false;
   const btn = document.getElementById('ar-toggle-btn');
   btn.textContent = '🔄 自動更新';
   btn.style.color = '';
