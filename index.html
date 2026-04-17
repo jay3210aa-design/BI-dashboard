@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BI 整合儀表板</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
 :root {
   --bg: #f5f7fa; --card-bg: #fff; --border: #e2e8f0;
@@ -465,6 +466,32 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
 .lul-sum-card.s-red{border-color:var(--red-border);background:var(--red-bg)}
 .lul-sum-card.s-red .lul-sum-n{color:var(--red)}
 
+/* ── WIP Charts ── */
+.wip-chart-toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.wip-chart-section{margin-bottom:18px;display:none}
+.wip-chart-section.open{display:block}
+.wip-chart-grid{display:grid;grid-template-columns:240px 1fr;gap:12px;align-items:start}
+@media(max-width:760px){.wip-chart-grid{grid-template-columns:1fr}}
+.wip-chart-box{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;box-shadow:var(--shadow);
+}
+.wip-chart-title{font-size:12px;font-weight:700;color:var(--text-sub);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.wip-chart-canvas-wrap{position:relative;width:100%;overflow:hidden}
+.wip-chart-topn{display:flex;gap:4px;align-items:center}
+.wip-chart-topn span{font-size:11px;color:var(--text-sub)}
+.wip-chart-topn select{padding:2px 6px;border:1px solid var(--border);border-radius:4px;
+  background:var(--input-bg);color:var(--text);font-size:11px;cursor:pointer}
+.wip-chart-topn select:focus{outline:none}
+.btn-chart-toggle{
+  padding:5px 12px;border:1px solid var(--border);border-radius:6px;
+  background:var(--pill-bg);color:var(--text);font-size:12px;cursor:pointer;font-weight:600;
+  display:flex;align-items:center;gap:5px;transition:all .15s;
+}
+.btn-chart-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.btn-chart-toggle.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
 /* ── Auto Refresh Panel ── */
 .ar-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1001;align-items:center;justify-content:center;padding:16px}
 .ar-panel.open{display:flex}
@@ -582,7 +609,7 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
     </div>
 
     <!-- 篩選列 -->
-    <div class="wip-filter-row">
+    <div class="wip-filter-row" style="margin-bottom:12px">
       <div class="form-group">
         <label>Owner</label>
         <input type="text" id="wf-owner" placeholder="篩選 Owner" oninput="renderWipTable()">
@@ -597,6 +624,50 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
       </div>
       <button class="btn btn-edit" onclick="clearWipFilter()">清除篩選</button>
       <button class="btn btn-primary" onclick="exportWipExcel()">⬇ 匯出 Excel</button>
+    </div>
+
+    <!-- 圖表切換按鈕 -->
+    <div class="wip-chart-toggle-row">
+      <button class="btn-chart-toggle" id="chart-toggle-btn" onclick="toggleWipCharts()">
+        📊 顯示圖表
+      </button>
+      <span style="font-size:11px;color:var(--text-sub)">堆疊橫條圖</span>
+    </div>
+
+    <!-- 圖表區 -->
+    <div class="wip-chart-section" id="wip-chart-section">
+
+      <!-- 堆疊橫條圖 Top N Groups（全寬） -->
+      <div class="wip-chart-box" style="margin-bottom:12px">
+        <div class="wip-chart-title">
+          <span>各群組 WIP 分佈（不含 Hold）</span>
+          <div class="wip-chart-topn">
+            <span>顯示前</span>
+            <select id="chart-topn-sel" onchange="renderWipCharts()">
+              <option value="10">10</option>
+              <option value="15" selected>15</option>
+              <option value="20">20</option>
+              <option value="999">全部</option>
+            </select>
+            <span>筆</span>
+          </div>
+        </div>
+        <div id="wip-bar-wrap" style="position:relative;width:100%">
+          <canvas id="wip-bar-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Hold 專屬圖表（全寬） -->
+      <div class="wip-chart-box" id="wip-hold-box" style="display:none">
+        <div class="wip-chart-title">
+          <span>🔴 Hold 分佈（依群組）</span>
+          <span id="wip-hold-total" style="font-size:11px;color:#e53e3e;font-weight:700"></span>
+        </div>
+        <div id="wip-hold-wrap" style="position:relative;width:100%">
+          <canvas id="wip-hold-chart"></canvas>
+        </div>
+      </div>
+
     </div>
 
     <div class="wip-tbl-wrap">
@@ -1543,6 +1614,9 @@ function renderWipTable() {
 
   document.getElementById('wip-tbody').innerHTML =
     (data.length ? tbody : `<tr><td colspan="10" class="modal-empty">無符合資料</td></tr>`) + totalRow;
+
+  // 圖表同步更新
+  renderWipCharts();
 }
 
 // ── WIP Export ──────────────────────────────────────────
@@ -2495,6 +2569,255 @@ function lulRender() {
 
   document.getElementById('lul-grid').innerHTML =
     cards || '<div class="lul-empty">無符合條件的機台</div>';
+}
+
+// ══════════════════════════════════════════════════════
+// WIP Charts
+// ══════════════════════════════════════════════════════
+let wipBarChart   = null;
+let wipChartsOpen = false;
+
+// Stage 顏色：x30 → x70 → Hold
+const STAGE_COLORS = {
+  x30:  { bg:'rgba(49,130,206,0.75)',  border:'#3182ce' },
+  x40:  { bg:'rgba(56,161,105,0.75)',  border:'#38a169' },
+  x50:  { bg:'rgba(214,158,46,0.75)',  border:'#d69e2e' },
+  x60:  { bg:'rgba(128,90,213,0.75)',  border:'#805ad5' },
+  x70:  { bg:'rgba(237,100,166,0.75)', border:'#ed64a6' },
+  hold: { bg:'rgba(229,62,62,0.75)',   border:'#e53e3e' },
+};
+
+const isDark = () =>
+  window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+function chartDefaults() {
+  const dark = isDark();
+  Chart.defaults.color         = dark ? '#a0aec0' : '#718096';
+  Chart.defaults.borderColor   = dark ? '#4a5568' : '#e2e8f0';
+}
+
+// 修正 CSS zoom:1.3 造成 tooltip 偏移及右側無反應的問題
+// 問題根源：Chart.js 先計算 inChartArea（用有誤差的 offsetX/Y），之後 beforeEvent 才執行
+// 所以必須同時修正 event.x/y 以及 args.inChartArea
+const wipZoomFixPlugin = {
+  id: 'wipZoomFix',
+  beforeEvent(chart, args) {
+    const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+    if (Math.abs(zoom - 1) < 0.01 || !args.event.native) return;
+    const native = args.event.native;
+    const rect = chart.canvas.getBoundingClientRect();
+    args.event.x = (native.clientX - rect.left) / zoom;
+    args.event.y = (native.clientY - rect.top)  / zoom;
+    // 用修正後的座標重新判斷 inChartArea，否則右側仍被誤判為圖表外
+    args.inChartArea = chart.isPointInArea(args.event);
+  }
+};
+
+function toggleWipCharts() {
+  wipChartsOpen = !wipChartsOpen;
+  const sec = document.getElementById('wip-chart-section');
+  const btn = document.getElementById('chart-toggle-btn');
+  sec.classList.toggle('open', wipChartsOpen);
+  if (wipChartsOpen) {
+    btn.textContent = '📊 隱藏圖表';
+    btn.classList.add('active');
+    renderWipCharts();
+  } else {
+    btn.textContent = '📊 顯示圖表';
+    btn.classList.remove('active');
+  }
+}
+
+function renderWipCharts() {
+  if (!wipChartsOpen) return;
+  chartDefaults();
+
+  // 取得當前已篩選資料（使用 wipTableData 全域變數）
+  const data = (wipTableData && wipTableData.length) ? wipTableData : [];
+
+  // ── 橫條圖：各群組堆疊 ──
+  const topN = parseInt(document.getElementById('chart-topn-sel').value) || 15;
+  const sorted = [...data].sort((a,b) => b.total - a.total).slice(0, topN);
+
+  const barLabels = sorted.map(g => {
+    const base = `${g.owner}/${g.lead}`;
+    if (!g.body) return base;
+    const bodyShort = g.body.split('*').slice(0, 2).join('*').replace(/MM$/i, '');
+    return `${base} ${bodyShort}`;
+  });
+
+  // Hold 不加入此圖表
+  const barDatasets = WIP_ST.map(s => ({
+    label: s,
+    data: sorted.map(g => Math.round(g[s] / 1000)),
+    backgroundColor: STAGE_COLORS[s].bg,
+    borderColor: STAGE_COLORS[s].border,
+    borderWidth: 1,
+    barPercentage: 0.55,
+    categoryPercentage: 0.80,
+  }));
+
+  if (wipBarChart) { wipBarChart.destroy(); wipBarChart = null; }
+
+  const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+  const dpr  = (window.devicePixelRatio || 1) * zoom;
+  const BAR_ROW_H = Math.round(30 / zoom);
+  const barHeight = Math.max(200, sorted.length * BAR_ROW_H + 70);
+  const wrap = document.getElementById('wip-bar-wrap');
+  wrap.style.height = barHeight + 'px';
+  wrap.style.maxHeight = '';
+  wrap.style.overflowY = 'visible';
+
+  wrap.innerHTML = '<canvas id="wip-bar-chart"></canvas>';
+  const canvas = document.getElementById('wip-bar-chart');
+
+  const ctxB = canvas.getContext('2d');
+  wipBarChart = new Chart(ctxB, {
+    type: 'bar',
+    data: { labels: barLabels, datasets: barDatasets },
+    plugins: [wipZoomFixPlugin],
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      devicePixelRatio: dpr,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { boxWidth: 12, padding: 8, font:{ size:11 } }
+        },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const idx = items[0].dataIndex;
+              const g = sorted[idx];
+              return g ? `${g.owner} / ${g.lead}${g.body ? '\n' + g.body : ''}` : '';
+            },
+            label: ctx => ` ${ctx.dataset.label}：${ctx.parsed.x.toLocaleString()}K`
+          }
+        }
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const el = elements[0];
+        const g  = sorted[el.index];
+        if (!g) return;
+        const stage  = WIP_ST[el.datasetIndex] ?? 'total';
+        const rowIdx = wipTableData.findIndex(d =>
+          d.owner === g.owner && d.lead === g.lead && d.body === g.body
+        );
+        if (rowIdx === -1) return;
+        openWipDetail(rowIdx, stage);
+      },
+      onHover: (evt, elements) => {
+        if (evt.native) evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks:{ font:{ size:11 } },
+          title:{ display:true, text:'數量 (K)', font:{ size:11 } }
+        },
+        y: {
+          stacked: true,
+          ticks:{ font:{ size:11 }, autoSkip: false }
+        }
+      }
+    }
+  });
+
+  // ── Hold 專屬圖表 ──
+  renderHoldChart(data);
+}
+
+let wipHoldChart = null;
+
+function renderHoldChart(data) {
+  const holdData = [...data]
+    .filter(g => g.hold > 0)
+    .sort((a, b) => b.hold - a.hold);
+
+  const box = document.getElementById('wip-hold-box');
+  if (holdData.length === 0) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+
+  const totalHold = holdData.reduce((s, g) => s + g.hold, 0);
+  document.getElementById('wip-hold-total').textContent =
+    `合計：${Math.round(totalHold / 1000).toLocaleString()}K`;
+
+  const labels = holdData.map(g => {
+    const base = `${g.owner}/${g.lead}`;
+    if (!g.body) return base;
+    const bodyShort = g.body.split('*').slice(0, 2).join('*').replace(/MM$/i, '');
+    return `${base} ${bodyShort}`;
+  });
+  const values = holdData.map(g => Math.round(g.hold / 1000));
+
+  const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+  const dpr   = (window.devicePixelRatio || 1) * zoom;
+  const rowH  = Math.round(30 / zoom);
+  const holdH = Math.max(120, holdData.length * rowH + 70);
+
+  if (wipHoldChart) { wipHoldChart.destroy(); wipHoldChart = null; }
+  const wrap = document.getElementById('wip-hold-wrap');
+  wrap.style.height = holdH + 'px';
+  wrap.innerHTML = '<canvas id="wip-hold-chart"></canvas>';
+  const ctxH = document.getElementById('wip-hold-chart').getContext('2d');
+
+  wipHoldChart = new Chart(ctxH, {
+    type: 'bar',
+    plugins: [wipZoomFixPlugin],
+    data: {
+      labels,
+      datasets: [{
+        label: 'Hold',
+        data: values,
+        backgroundColor: 'rgba(229,62,62,0.70)',
+        borderColor: '#e53e3e',
+        borderWidth: 1,
+        barPercentage: 0.55,
+        categoryPercentage: 0.80,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      devicePixelRatio: dpr,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const g = holdData[items[0].dataIndex];
+              return g ? `${g.owner} / ${g.lead}${g.body ? '\n' + g.body : ''}` : '';
+            },
+            label: ctx => ` Hold：${ctx.parsed.x.toLocaleString()}K`
+          }
+        }
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const g = holdData[elements[0].index];
+        if (!g) return;
+        const rowIdx = wipTableData.findIndex(d =>
+          d.owner === g.owner && d.lead === g.lead && d.body === g.body
+        );
+        if (rowIdx === -1) return;
+        openWipDetail(rowIdx, 'hold');
+      },
+      onHover: (evt, elements) => {
+        if (evt.native) evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      },
+      scales: {
+        x: {
+          ticks:{ font:{ size:11 } },
+          title:{ display:true, text:'數量 (K)', font:{ size:11 } }
+        },
+        y: { ticks:{ font:{ size:11 }, autoSkip: false } }
+      }
+    }
+  });
 }
 
 // ══ Auto Refresh ════════════════════════════════════════
