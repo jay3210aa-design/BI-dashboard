@@ -2822,7 +2822,7 @@ function renderHoldChart(data) {
 
 // ══ Auto Refresh ════════════════════════════════════════
 const arHandles  = { output: null, wip: null, lul: null };  // 資料夾 handle
-const arPrefix   = { output: 'BinData_Yield', wip: 'WipArrange', lul: 'BI_LUL' };
+const arPrefix   = { output: 'BinData_Yield', wip: 'WipArrange', lul: 'BIWaitUnLoad' };
 let arTimer          = null;   // setTimeout handle
 let arCountdownTimer = null;   // setInterval handle (每秒倒數)
 let arScheduledTimes = ['06:40', '10:10', '14:10', '16:10'];
