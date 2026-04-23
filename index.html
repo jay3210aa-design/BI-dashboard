@@ -765,20 +765,21 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
                 <tr>
                   <th style="width:22px"></th>
                   <th style="width:28px;text-align:center">#</th>
-                  <th>Oven Type</th><th>Package</th><th>Owner</th>
+                  <th>Oven Type</th><th>LEAD</th><th>Owner</th>
                   <th title="使用者輸入">BIB<br><span style="font-weight:400;text-transform:none">(set)</span></th>
                   <th title="使用者輸入">BI Time<br><span style="font-weight:400;text-transform:none">(hrs)</span></th>
                   <th title="使用者輸入">Operate Time<br><span style="font-weight:400;text-transform:none">(hrs)</span></th>
                   <th title="使用者輸入">Mask Rate</th>
                   <th title="使用者輸入">Socket<br><span style="font-weight:400;text-transform:none">(ea)</span></th>
                   <th title="使用者輸入">BIB Type</th>
+                  <th title="WIP x30+x40 加總（依 Owner 前2碼 + LEAD 比對）">WIP<br><span style="font-weight:400;text-transform:none">(K)</span></th>
                   <th title="公式：BIB(set)×(ANDO?48:60)×0.92">BIB<br><span style="font-weight:400;text-transform:none">(ea)</span></th>
-                  <th title="公式：BIB(set)×Socket×(48或60)×0.92×24÷(BI+Oper)÷1000×MaskRate">Plan Output<br><span style="font-weight:400;text-transform:none">(K)</span></th>
-                  <th title="公式：BIB(set)×24÷(BI+Oper)÷(24/4)">Loader</th>
+                  <th title="公式：BIB(set)×Socket×(48或60)×0.92×24÷(BI+Oper)÷1000×MaskRate">OUTPUT<br><span style="font-weight:400;text-transform:none">(K)</span></th>
+                  <th title="公式：BIB(set)×24÷(BI+Oper)÷(24/4)">LUL</th>
                   <th title="公式：BIB(set)×(BI+3.15)÷(BI+Oper)">Oven</th>
                   <th title="公式：BIB(set)×24÷(BI+Oper)">Turn</th>
                   <th title="公式：Turn÷2÷10">Oven OP</th>
-                  <th title="公式：Loader÷3">Loader OP</th>
+                  <th title="公式：LUL÷3">LUL OP</th>
                   <th style="width:38px"></th>
                 </tr>
               </thead>
@@ -818,7 +819,7 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
               <select class="ti" id="nc-unit" style="min-width:90px"></select>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:11px;color:var(--text-muted)">Package（空=不限）</label>
+              <label style="font-size:11px;color:var(--text-muted)">LEAD（空=不限）</label>
               <input class="ti" id="nc-package" placeholder="96B" style="min-width:100px">
             </div>
             <div style="display:flex;flex-direction:column;gap:4px">
@@ -842,7 +843,7 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
               <tr>
                 <th style="width:22px"></th>
                 <th style="width:28px;text-align:center">#</th>
-                <th>Unit</th><th>Package</th><th>Owner</th><th>Part No</th><th>備註</th>
+                <th>Unit</th><th>LEAD</th><th>Owner</th><th>Part No</th><th>備註</th>
                 <th style="width:110px"></th>
               </tr>
             </thead>
@@ -2018,7 +2019,7 @@ function renderProductRow(id) {
   const p = products.find(p => p.id === id); if (!p) return;
   const c = calcProduct(p);
   const tr = document.getElementById('row-' + id); if (!tr) return;
-  tr.querySelector('.c-bibea').textContent    = fmt(c.bibEa,1);
+  tr.querySelector('.c-bibea').textContent    = Math.round(c.bibEa);
   tr.querySelector('.c-output').textContent   = fmt(c.planOutput,1);
   tr.querySelector('.c-loader').textContent   = fmt(c.loader,1);
   tr.querySelector('.c-oven').textContent     = fmt(c.oven,1);
@@ -2027,6 +2028,22 @@ function renderProductRow(id) {
   tr.querySelector('.c-loaderop').textContent = fmt(c.loaderOp,1);
 }
 function esc(s) { return (s||'').replace(/"/g,'&quot;'); }
+
+function getProductWip(p) {
+  if (!hasWip) return null;
+  const ownerKey = (p.owner || '').trim().slice(0, 2).toLowerCase();
+  const pkg      = (p.package || '').trim().toLowerCase();
+  let total = 0;
+  wipRows.forEach(r => {
+    const rOwner = String(getVal(r, 'Owner') || '').trim().slice(0, 2).toLowerCase();
+    const rLead  = String(getVal(r, 'Lead')  || '').trim().toLowerCase();
+    const st     = operToStatus(String(getVal(r, 'Oper') || '').trim());
+    if (rOwner === ownerKey && rLead === pkg && (st === 'x30' || st === 'x40')) {
+      total += Number(getVal(r, 'Qty') || 0);
+    }
+  });
+  return total / 1000;
+}
 
 function renderProducts() {
   const models = ['ANDOC7H2','ANDOC7H3','ANDOC7_60','ANDOD6M','ANDOD5','ANDOD6','ANDODQ','H5620'];
@@ -2053,7 +2070,8 @@ function renderProducts() {
       <td><input class="ti" type="number" value="${p.maskRate}" min="0" max="1" step="0.01" style="min-width:62px" oninput="updateField(${p.id},'maskRate',this.value)"></td>
       <td><input class="ti" type="number" value="${p.socket}" min="1" step="1" style="min-width:62px" oninput="updateField(${p.id},'socket',this.value)"></td>
       <td><input class="ti" value="${esc(p.bibType||'')}" placeholder="G,B,P" style="min-width:70px" oninput="updateField(${p.id},'bibType',this.value)"></td>
-      <td class="calc c-bibea"     style="text-align:right;background:var(--bg-secondary)">${fmt(c.bibEa,1)}</td>
+      <td class="calc c-wip"       style="text-align:right;background:var(--bg-secondary)">${(()=>{ const w=getProductWip(p); return w===null?'—':Math.round(w); })()}</td>
+      <td class="calc c-bibea"     style="text-align:right;background:var(--bg-secondary)">${Math.round(c.bibEa)}</td>
       <td class="calc-hi c-output" style="text-align:right;background:var(--bg-secondary)">${fmt(c.planOutput,1)}</td>
       <td class="calc c-loader"    style="text-align:right;background:var(--bg-secondary)">${fmt(c.loader,1)}</td>
       <td class="calc-hi c-oven"   style="text-align:right;background:var(--bg-secondary)">${fmt(c.oven,1)}</td>
@@ -2094,9 +2112,12 @@ function renderAlertsAndSummary() {
     const assigned = products.filter(p => p.ovenType === model);
     const assignedRows = assigned.map(p => {
       const c = calcProduct(p);
+      const pw = getProductWip(p);
+      const wipStr = pw === null ? '—' : Math.round(pw);
       return `<div style="display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px;">
         <span style="color:var(--text-secondary);font-family:var(--mono);min-width:32px">${p.owner||'—'}</span>
         <span style="color:var(--text-muted);font-family:var(--mono);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.package||'—'}</span>
+        <span style="color:var(--yellow,#d69e2e);font-family:var(--mono);white-space:nowrap;min-width:38px;text-align:right">${wipStr}</span>
         <span style="color:var(--accent);font-family:var(--mono);white-space:nowrap">${fmt(c.oven,1)}</span>
       </div>`;
     }).join('');
@@ -2110,7 +2131,7 @@ function renderAlertsAndSummary() {
       <div class="sum-model">${model}</div>
       ${assigned.length > 0 ? `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
         <div style="display:flex;gap:6px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">
-          <span style="min-width:32px">Owner</span><span style="flex:1">Package</span><span style="white-space:nowrap">Oven</span>
+          <span style="min-width:32px">Owner</span><span style="flex:1">LEAD</span><span style="white-space:nowrap;min-width:38px;text-align:right">WIP(K)</span><span style="white-space:nowrap">Oven</span>
         </div>${assignedRows}</div>` : ''}`;
     summaryGrid.appendChild(card);
   }
@@ -2118,19 +2139,24 @@ function renderAlertsAndSummary() {
   const totalOven = Object.values(demand).reduce((a,b)=>a+b,0);
   const totalLoader = products.reduce((s,p)=>s+calcProduct(p).loader,0);
   const overCount = uniqueModels.filter(m=>(demand[m]||0)>(modelInfo[m]?.avail||0)).length;
+  const totalWipK = hasWip ? products.reduce((s,p)=>{ const w=getProductWip(p); return s+(w||0); },0) : null;
+  const wipBarItem = totalWipK !== null
+    ? `<div class="vdiv"></div><div class="total-item"><div class="total-label">WIP (x30+x40)</div><div class="total-value" style="color:var(--yellow,#d69e2e)">${Math.round(totalWipK)}<span class="total-unit"> K</span></div></div>`
+    : '';
   document.getElementById('totalBar').innerHTML = `
-    <div class="total-item"><div class="total-label">Plan Output 合計</div><div class="total-value">${totalOutput.toFixed(1)}<span class="total-unit"> K</span></div></div>
+    <div class="total-item"><div class="total-label">OUTPUT 合計</div><div class="total-value">${totalOutput.toFixed(1)}<span class="total-unit"> K</span></div></div>
     <div class="vdiv"></div>
     <div class="total-item"><div class="total-label">總需求 Oven</div><div class="total-value">${totalOven}<span class="total-unit"> 台</span></div></div>
-    <div class="total-item"><div class="total-label">總需求 Loader</div><div class="total-value">${totalLoader.toFixed(1)}<span class="total-unit"> 台</span></div></div>
+    <div class="total-item"><div class="total-label">總需求 LUL</div><div class="total-value">${totalLoader.toFixed(1)}<span class="total-unit"> 台</span></div></div>
+    ${wipBarItem}
     <div class="vdiv"></div>
     <div class="total-item"><div class="total-label">超限型號</div><div class="total-value" style="color:${overCount>0?'var(--red)':'var(--green)'}">${overCount}<span class="total-unit"> 項</span></div></div>
     <div class="total-item"><div class="total-label">產品筆數</div><div class="total-value">${products.length}<span class="total-unit"> 筆</span></div></div>`;
 }
 
 function exportCSV() {
-  const headers = ['#','Oven Type','Package','Owner','BIB(set)','BI Time(hrs)','Operate Time(hrs)','Mask Rate','Socket(ea)','BIB Type','BIB(ea)','Plan Output(K)','Loader','Oven','Turn','Oven OP','Loader OP'];
-  const rows = products.map((p,i) => { const c=calcProduct(p); return [i+1,p.ovenType,p.package,p.owner,p.bibSet,p.biTime,p.operateTime,p.maskRate,p.socket,p.bibType||'',c.bibEa.toFixed(1),c.planOutput.toFixed(1),c.loader.toFixed(1),c.oven.toFixed(1),c.turn.toFixed(1),c.ovenOp.toFixed(1),c.loaderOp.toFixed(1)]; });
+  const headers = ['#','Oven Type','LEAD','Owner','BIB(set)','BI Time(hrs)','Operate Time(hrs)','Mask Rate','Socket(ea)','BIB Type','WIP(K)','BIB(ea)','Output(K)','LUL','Oven','Turn','Oven OP','LUL OP'];
+  const rows = products.map((p,i) => { const c=calcProduct(p); const pw=getProductWip(p); return [i+1,p.ovenType,p.package,p.owner,p.bibSet,p.biTime,p.operateTime,p.maskRate,p.socket,p.bibType||'',pw===null?'':Math.round(pw),Math.round(c.bibEa),c.planOutput.toFixed(1),c.loader.toFixed(1),c.oven.toFixed(1),c.turn.toFixed(1),c.ovenOp.toFixed(1),c.loaderOp.toFixed(1)]; });
   const csv = [headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));
@@ -2252,7 +2278,7 @@ function queryMachine() {
   div.innerHTML=`<div style="margin-bottom:12px"><span class="badge-over">⚠ ${esc(unit)} 共有 ${matched.length} 條限制規則</span></div>
     <div style="display:flex;flex-direction:column;gap:8px">${matched.map(c=>`
     <div class="constraint-query-card">
-      <div><div class="constraint-label">Package</div>${c.package?`<span class="badge-neutral">${esc(c.package)}</span>`:'<span style="color:var(--text-muted);font-size:12px">不限</span>'}</div>
+      <div><div class="constraint-label">LEAD</div>${c.package?`<span class="badge-neutral">${esc(c.package)}</span>`:'<span style="color:var(--text-muted);font-size:12px">不限</span>'}</div>
       <div><div class="constraint-label">Owner</div>${c.owner?`<span class="badge-neutral">${esc(c.owner)}</span>`:'<span style="color:var(--text-muted);font-size:12px">不限</span>'}</div>
       <div><div class="constraint-label">Part No</div>${c.partNo?`<span style="font-family:var(--mono);font-size:12px;color:var(--yellow)">${esc(c.partNo)}</span>`:'<span style="color:var(--text-muted);font-size:12px">不限</span>'}</div>
       <div><div class="constraint-label">備註</div><span style="font-size:12px;color:var(--text-secondary)">${esc(c.note||'')||'—'}</span></div>
@@ -2260,7 +2286,7 @@ function queryMachine() {
 }
 function exportConstraintsCSV() {
   if (!constraints.length) { alert('目前無限制規則可匯出'); return; }
-  const headers=['Unit','Package','Owner','Part No','備註'];
+  const headers=['Unit','LEAD','Owner','Part No','備註'];
   const rows=constraints.map(c=>[c.unit,c.package||'',c.owner||'',c.partNo||'',c.note||'']);
   const csv=[headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const a=document.createElement('a');
