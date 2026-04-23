@@ -772,7 +772,7 @@ tr.cap-drag-over td{border-top:2px solid var(--accent)}
                   <th title="使用者輸入">Mask Rate</th>
                   <th title="使用者輸入">Socket<br><span style="font-weight:400;text-transform:none">(ea)</span></th>
                   <th title="使用者輸入">BIB Type</th>
-                  <th title="WIP x30+x40 加總（依 Owner 前2碼 + LEAD 比對）">WIP<br><span style="font-weight:400;text-transform:none">(K)</span></th>
+                  <th title="WIP x30+x40+x50 加總（依 Owner 前2碼 + LEAD 比對）">WIP<br><span style="font-weight:400;text-transform:none">(K)</span></th>
                   <th title="公式：BIB(set)×(ANDO?48:60)×0.92">BIB<br><span style="font-weight:400;text-transform:none">(ea)</span></th>
                   <th title="公式：BIB(set)×Socket×(48或60)×0.92×24÷(BI+Oper)÷1000×MaskRate">OUTPUT<br><span style="font-weight:400;text-transform:none">(K)</span></th>
                   <th title="公式：BIB(set)×24÷(BI+Oper)÷(24/4)">LUL</th>
@@ -2038,7 +2038,7 @@ function getProductWip(p) {
     const rOwner = String(getVal(r, 'Owner') || '').trim().slice(0, 2).toLowerCase();
     const rLead  = String(getVal(r, 'Lead')  || '').trim().toLowerCase();
     const st     = operToStatus(String(getVal(r, 'Oper') || '').trim());
-    if (rOwner === ownerKey && rLead === pkg && (st === 'x30' || st === 'x40')) {
+    if (rOwner === ownerKey && rLead === pkg && (st === 'x30' || st === 'x40' || st === 'x50')) {
       total += Number(getVal(r, 'Qty') || 0);
     }
   });
@@ -2131,7 +2131,7 @@ function renderAlertsAndSummary() {
       <div class="sum-model">${model}</div>
       ${assigned.length > 0 ? `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
         <div style="display:flex;gap:6px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">
-          <span style="min-width:32px">Owner</span><span style="flex:1">LEAD</span><span style="white-space:nowrap;min-width:38px;text-align:right">WIP(K)</span><span style="white-space:nowrap">Oven</span>
+          <span style="min-width:32px">Owner</span><span style="flex:1">LEAD</span><span style="white-space:nowrap;min-width:38px;text-align:right">WIP</span><span style="white-space:nowrap">Oven</span>
         </div>${assignedRows}</div>` : ''}`;
     summaryGrid.appendChild(card);
   }
@@ -2141,7 +2141,7 @@ function renderAlertsAndSummary() {
   const overCount = uniqueModels.filter(m=>(demand[m]||0)>(modelInfo[m]?.avail||0)).length;
   const totalWipK = hasWip ? products.reduce((s,p)=>{ const w=getProductWip(p); return s+(w||0); },0) : null;
   const wipBarItem = totalWipK !== null
-    ? `<div class="vdiv"></div><div class="total-item"><div class="total-label">WIP (x30+x40)</div><div class="total-value" style="color:var(--yellow,#d69e2e)">${Math.round(totalWipK)}<span class="total-unit"> K</span></div></div>`
+    ? `<div class="vdiv"></div><div class="total-item"><div class="total-label">WIP (x30+x40+x50)</div><div class="total-value" style="color:var(--yellow,#d69e2e)">${Math.round(totalWipK)}<span class="total-unit"> K</span></div></div>`
     : '';
   document.getElementById('totalBar').innerHTML = `
     <div class="total-item"><div class="total-label">OUTPUT 合計</div><div class="total-value">${totalOutput.toFixed(1)}<span class="total-unit"> K</span></div></div>
